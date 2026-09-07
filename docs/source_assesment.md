@@ -74,11 +74,11 @@ The following grains and keys are initial candidates. They must be confirmed usi
 
 | Source table | Key tested? | Duplicate count | Null-key count | Status |
 |---|---|---:|---:|---|
-| `courses` | No | To be checked | To be checked | Pending |
+| `courses` | Yes | 0 | 0 | PASS |
 | `assessments` | No | To be checked | To be checked | Pending |
 | `studentInfo` | No | To be checked | To be checked | Pending |
 | `studentRegistration` | No | To be checked | To be checked | Pending |
-| `studentAssessment` | No | To be checked | To be checked | Pending |
+| `studentAssessment` | Yes | 0 | 0 | PASS |
 | `vle` | No | To be checked | To be checked | Pending |
 | `studentVle` | No | To be checked | To be checked | Pending |
 
@@ -89,11 +89,11 @@ The following grains and keys are initial candidates. They must be confirmed usi
 | Child table | Parent table | Join columns | Status |
 |---|---|---|---|
 | `assessments` | `courses` | `code_module`, `code_presentation` | Pending |
-| `studentInfo` | `courses` | `code_module`, `code_presentation` | Pending |
+| `studentInfo` | `courses` | `code_module`, `code_presentation` | PASS |
 | `studentRegistration` | `studentInfo` | `code_module`, `code_presentation`, `id_student` | Pending |
 | `studentAssessment` | `assessments` | `id_assessment` | Pending |
 | `vle` | `courses` | `code_module`, `code_presentation` | Pending |
-| `studentVle` | `studentInfo` | `code_module`, `code_presentation`, `id_student` | Pending |
+| `studentVle` | `studentInfo` | `code_module`, `code_presentation`, `id_student` | PASS |
 | `studentVle` | `vle` | `code_module`, `code_presentation`, `id_site` | Pending |
 
 These relationships must be tested for unmatched records before building the Mart layer.

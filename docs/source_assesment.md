@@ -76,10 +76,10 @@ The following grains and keys are initial candidates. They must be confirmed usi
 |---|---|---:|---:|---|
 | `courses` | No | To be checked | To be checked | Pending |
 | `assessments` | No | To be checked | To be checked | Pending |
-| `studentInfo` | No | To be checked | To be checked | Pending |
+| `studentInfo` | Yes | 0 | 1,111 in imd_band | Flag |
 | `studentRegistration` | No | To be checked | To be checked | Pending |
 | `studentAssessment` | No | To be checked | To be checked | Pending |
-| `vle` | No | To be checked | To be checked | Pending |
+| `vle` | Yes | 0 | 5,243 | Review depending on business context |
 | `studentVle` | No | To be checked | To be checked | Pending |
 
 ---
@@ -149,8 +149,8 @@ Update this section after completing source profiling.
 
 | Issue ID | Source table | Column or key | Finding | Valid or invalid? | Planned treatment |
 |---|---|---|---|---|---|
-| ISSUE-001 | To be added | To be added | To be added | To be determined | To be determined |
-| ISSUE-002 | To be added | To be added | To be added | To be determined | To be determined |
+| ISSUE-001 | vle_bronze, student_registration_bronze | code_module | Modules have multiple presentations (e.g., BBB occurs 4 times). Joining solely on module code causes row multiplication. | Valid | Enforce strictly composite-key joins using both code_module and code_presentation in the Mart layer. |
+| ISSUE-002 | student_registration_bronze | date_unregistration | Missing unregistration dates are stored as the string character ? instead of a system NULL. | Invalid Format | Replace the literal ? with a true SQL NULL and cast the column to an integer or date type |
 | ISSUE-003 | To be added | To be added | To be added | To be determined | To be determined |
 
 ### Notes

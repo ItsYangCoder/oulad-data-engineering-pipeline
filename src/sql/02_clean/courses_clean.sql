@@ -34,6 +34,7 @@
 -- Input: open_university.oulad_bronze.courses_raw
 -- Output: open_university.oulad_silver.courses_clean
 -- Grain / business key: One module presentation; (code_module, code_presentation).
+-- ========================================================================================================
 
 -- Create the Delta (Databricks' transactional storage format) target once, if it doesn't exist yet.
 CREATE TABLE IF NOT EXISTS open_university.oulad_silver.courses_clean (

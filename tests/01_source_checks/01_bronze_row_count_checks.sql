@@ -5,7 +5,7 @@ SELECT
     COUNT(*) AS bronze_count,
     206 AS expected_count,
     COUNT(*) - 206 AS difference
-FROM open_university.oulad_bronze.assesments_raw
+FROM open_university.oulad_bronze.assessments_raw
 
 UNION ALL
 
@@ -23,7 +23,7 @@ SELECT
     COUNT(*),
     173912,
     COUNT(*) - 173912
-FROM open_university.oulad_bronze.student_assesments_raw
+FROM open_university.oulad_bronze.student_assessments_raw
 
 UNION ALL
 
@@ -60,6 +60,3 @@ SELECT
     6364,
     COUNT(*) - 6364
 FROM open_university.oulad_bronze.vle_raw;
-
-
-SELECT * FROM FROM open_university.oulad_bronze.student_vle_raw;

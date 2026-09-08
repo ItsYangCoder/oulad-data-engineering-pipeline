@@ -149,9 +149,9 @@ Update this section after completing source profiling.
 
 | Issue ID | Source table | Column or key | Finding | Valid or invalid? | Planned treatment |
 |---|---|---|---|---|---|
-| ISSUE-001 | To be added | To be added | To be added | To be determined | To be determined |
-| ISSUE-002 | To be added | To be added | To be added | To be determined | To be determined |
-| ISSUE-003 | To be added | To be added | To be added | To be determined | To be determined |
+| ISSUE-001 | assessments | date | 11 Exam records use '?' for missing dates | Valid | Convert '?' to NULL in Silver |
+| ISSUE-002 | assessments | weight | 56 records have zero weight | Valid | Retain and document |
+| ISSUE-003 | assessments | code_module, code_presentation, assessment_type | CCC 2014B and 2014J each have two Exams | Valid | Retain both; no deduplication |
 
 ### Notes
 

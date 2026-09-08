@@ -1,7 +1,7 @@
 -- Initial load: creates and loads the table only if it does not exist.
 
 CREATE TABLE IF NOT EXISTS
-    open_university.oulad_bronze.assessments_raw
+    open_university.oulad_bronze.assessment_raw
 USING DELTA
 AS
 SELECT
@@ -11,5 +11,7 @@ SELECT
 FROM read_files(
     '/Volumes/open_university/oulad_bronze/ftw-b12/shared/week07/assessments.csv'
 );
+
+
 
 

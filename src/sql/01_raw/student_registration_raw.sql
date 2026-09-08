@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS open_university.oulad_bronze.student_reg_raw
+CREATE TABLE IF NOT EXISTS open_university.oulad_bronze.student_registration_raw
 USING DELTA
 AS 
 SELECT *, 

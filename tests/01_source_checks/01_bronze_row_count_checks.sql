@@ -23,7 +23,7 @@ SELECT
     COUNT(*),
     173912,
     COUNT(*) - 173912
-FROM open_university.oulad_bronze.student_assessments_raw
+FROM open_university.oulad_bronze.student_assessment_raw
 
 UNION ALL
 

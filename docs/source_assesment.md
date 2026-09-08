@@ -75,7 +75,7 @@ The following grains and keys are initial candidates. They must be confirmed usi
 | Source table | Key tested? | Duplicate count | Null-key count | Status |
 |---|---|---:|---:|---|
 | `courses` | No | To be checked | To be checked | Pending |
-| `assessments` | No | To be checked | To be checked | Pending |
+| `assessments` | Yes (id_assessment) | 0 (for id_assessment); 2 (duplicate Exam rows per module/presentation) | 0 (for id_assessment); 11 (invalid literal '?' dates) | Failed |
 | `studentInfo` | No | To be checked | To be checked | Pending |
 | `studentRegistration` | No | To be checked | To be checked | Pending |
 | `studentAssessment` | No | To be checked | To be checked | Pending |
@@ -91,8 +91,8 @@ The following grains and keys are initial candidates. They must be confirmed usi
 | `assessments` | `courses` | `code_module`, `code_presentation` | Pending |
 | `studentInfo` | `courses` | `code_module`, `code_presentation` | Pending |
 | `studentRegistration` | `studentInfo` | `code_module`, `code_presentation`, `id_student` | Pending |
-| `studentAssessment` | `assessments` | `id_assessment` | Pending |
-| `vle` | `courses` | `code_module`, `code_presentation` | Pending |
+| `studentAssessment` | `assessments` | `id_assessment` | Confirmed - 0 unmatched |
+| `vle` | `courses` | `code_module`, `code_presentation` | Confirmed - 0 unmatched |
 | `studentVle` | `studentInfo` | `code_module`, `code_presentation`, `id_student` | Pending |
 | `studentVle` | `vle` | `code_module`, `code_presentation`, `id_site` | Pending |
 
@@ -149,8 +149,8 @@ Update this section after completing source profiling.
 
 | Issue ID | Source table | Column or key | Finding | Valid or invalid? | Planned treatment |
 |---|---|---|---|---|---|
-| ISSUE-001 | To be added | To be added | To be added | To be determined | To be determined |
-| ISSUE-002 | To be added | To be added | To be added | To be determined | To be determined |
+| ISSUE-001 | studentVle | (code_module, code_presentation, id_student, id_site, date) | 2,195,960 duplicate groups on the expected grain | Invalid (grain assumption doesn't hold as-is) | Aggregate in Cleaned layer via GROUP BY on the composite key with SUM(sum_click), so the Mart-layer grain matches the intended "one interaction per student/site/day" |
+| ISSUE-002 | studentVle | date | 688,988 rows with date < 0, MIN of -25 | Valid - per team date interpretation rules, negative relative-day values are expected (VLE materials can be accessed before the module's official day 0) | No cleaning needed; keep as signed integer, do not cast to DATE |
 | ISSUE-003 | To be added | To be added | To be added | To be determined | To be determined |
 
 ### Notes

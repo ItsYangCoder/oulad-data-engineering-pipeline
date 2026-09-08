@@ -1,6 +1,23 @@
--- File: 01_cohort_analysis.sql
--- Purpose: Analyze student outcomes by module presentation and cohort.
--- Sources: OULAD Gold dimension and fact models
--- Output: Query intended for Metabase visualization
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: 04_vle_engagement.sql
+-- Purpose: Summarize recorded clicks and participation across resource types and relative time.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: open_university.oulad_gold.fact_vle_interactions, dim_date and other relevant dimensions;
+--    vw_student_outcomes for all-enrollment rates.
+-- Output: Read-only result set for Metabase; no CREATE, MERGE, INSERT or table rebuild.
+-- Grain / business key: One output row per declared presentation, activity type or relative-time group.
+--
+-- What to put in this file:
+-- 1. Return SUM(sum_click), distinct active students, and clearly defined active-day measures.
+-- 2. At enrollment grain, count distinct interaction dates across resources; do not add per-resource
+--    day counts.
+-- 3. Use the outcomes view when a denominator must include students with no activity; a fact-only query
+--    covers active records only.
+-- 4. Use relative days/weeks for trends and state whether a student with a zero-click record counts as
+--    active.
+-- 5. Treat sum_click as recorded clicks, not time spent studying, sessions or resource quality.
+-- 6. Aggregate VLE and assessment facts separately before relating engagement to performance.
+--
+--
+-- Done when: Click totals reconcile to the VLE fact and participation denominators are explicit;
+--    tests/04_business_checks/04_engagement_checks.sql passes.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

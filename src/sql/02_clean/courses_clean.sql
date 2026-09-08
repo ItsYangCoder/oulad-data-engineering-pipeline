@@ -1,7 +1,26 @@
--- File: assessment_clean.sql
--- Layer: Silver / Clean
--- Purpose: Clean, cast, deduplicate, and validate assessment records.
--- Source: <catalog>.oulad_bronze.assessment_raw
--- Target: <catalog>.oulad_silver.assessment_clean
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: courses_clean.sql
+-- Purpose: Prepare the list of module presentations used by other Silver tables and Gold course
+--    dimensions.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: open_university.oulad_bronze.courses_raw
+-- Output: open_university.oulad_silver.courses_clean
+-- Grain / business key: One module presentation; (code_module, code_presentation).
+--
+-- What to put in this file:
+-- 1. Use named CTEs to trim text, convert ?, blank, NA, N/A and NULL text to SQL NULL, then TRY_CAST
+--    numeric fields.
+-- 2. Keep code_module, code_presentation and module_presentation_length.
+-- 3. Trim and consistently capitalize module/presentation codes; cast module_presentation_length to
+--    INT.
+-- 4. Validate complete unique composite keys and a positive presentation length.
+-- 5. Do not collapse different presentations of the same module or guess module titles/start dates.
+-- 6. Keep source column names; add clean_load_timestamp and clean_load_date. Record any invalid
+--    required values for review instead of silently losing rows.
+-- 7. Create the Delta target once if needed. Make repeat loads use the complete business key; rerunning
+--    the same input must not add duplicate business rows.
+--
+-- Validation belongs in tests/02_clean_checks/; these counts describe the current source batch.
+--
+-- Done when: 22 rows for the current batch, unique composite keys, valid lengths and related Silver
+--    checks pass.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

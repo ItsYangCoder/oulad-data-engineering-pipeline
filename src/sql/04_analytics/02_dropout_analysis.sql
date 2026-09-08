@@ -1,6 +1,21 @@
--- File: 01_cohort_analysis.sql
--- Purpose: Analyze student outcomes by module presentation and cohort.
--- Sources: OULAD Gold dimension and fact models
--- Output: Query intended for Metabase visualization
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: 02_dropout_analysis.sql
+-- Purpose: Measure withdrawal rates and known withdrawal timing.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: open_university.oulad_gold.vw_student_outcomes and relevant dimensions.
+-- Output: Read-only result set for Metabase; no CREATE, MERGE, INSERT or table rebuild.
+-- Grain / business key: One output row per chosen module presentation or demographic group.
+--
+-- What to put in this file:
+-- 1. Define dropout as final_result = 'Withdrawn'; calculate withdrawn_enrollments / all_enrollments in
+--    the same group.
+-- 2. Report the denominator and guard division by zero; keep a consistent decimal/percentage format.
+-- 3. Separate the number withdrawn from the distribution of known date_unregistration values.
+-- 4. Keep 93 Withdrawn records without dates in the dropout count and label their timing Unknown; do
+--    not reclassify the 9 Fail records with unregistration dates.
+-- 5. Group timing by documented relative days/weeks; keep valid pre-start withdrawals and avoid
+--    fabricated calendar dates.
+--
+--
+-- Done when: Current-batch full-population dropout counts reconcile to 10,156 of 32,593 enrollments;
+--    tests/04_business_checks/02_dropout_checks.sql passes.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

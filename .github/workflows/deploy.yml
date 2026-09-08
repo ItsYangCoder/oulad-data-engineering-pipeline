@@ -1,0 +1,30 @@
+# File: deploy.yml
+# Purpose: Publish a validated project revision to the agreed Databricks target.
+# Status: Implementation guide. Manual trigger only; the job is deliberately skipped.
+#
+# What the assigned member should put here:
+# 1. Define the development/final targets, deployment method and required configuration.
+# 2. Deploy only a known revision whose required checks passed; specify any job execution separately.
+# 3. Read authentication from configured secrets/environment settings; never hard-code tokens.
+# 4. Keep deployment order and table dependencies consistent with docs/pipeline_plan.md.
+# 5. Record the deployed revision and useful failure details; avoid duplicate jobs and unnecessary full rebuilds.
+# 6. Enable the real job and intended trigger only after the deployment process is tested.
+#
+# Done when: the deployed revision and its target are verifiable.
+# Replace the skipped job below with implementation; it does not validate or deploy anything.
+# Reference: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+name: Deployment (implementation pending)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  implementation-pending:
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Replace with real deployment steps before enabling
+        run: exit 1

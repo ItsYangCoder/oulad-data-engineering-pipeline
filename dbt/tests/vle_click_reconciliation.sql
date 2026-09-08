@@ -1,0 +1,23 @@
+{{ config(enabled=false) }}
+
+-- File: vle_click_reconciliation.sql
+-- Purpose: Prove the VLE fact preserves Silver click totals and daily keys.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: source('oulad_silver', 'student_vle_clean') and ref('fact_vle_interactions').
+-- Output: A dbt singular test: one SELECT/CTE query returning failing rows only.
+--
+-- What to put in this file:
+-- 1. Compare daily-key coverage in both directions and aggregate SUM(sum_click) globally and per module
+--    presentation.
+-- 2. Use a FULL OUTER comparison or equivalent so a missing entire source/target group cannot
+--    disappear.
+-- 3. Return only missing/extra keys, count differences or unequal totals, with explicit NULL handling.
+-- 4. Bronze-to-Silver aggregation reconciliation belongs in
+--    tests/02_clean_checks/06_silver_reconciliation_checks.sql.
+-- 5. Remove enabled=false when the SQL and upstream model are ready, then run this test and verify it
+--    catches a deliberate failing case in development.
+--
+--
+-- Done when: Zero returned mismatches; the current fact has 8,459,320 daily rows and the same click sum
+--    as Silver.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

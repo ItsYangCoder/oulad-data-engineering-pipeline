@@ -1,7 +1,27 @@
 -- File: assessment_clean.sql
--- Layer: Silver / Clean
--- Purpose: Clean, cast, deduplicate, and validate assessment records.
--- Source: <catalog>.oulad_bronze.assessment_raw
--- Target: <catalog>.oulad_silver.assessment_clean
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- Purpose: Prepare assessment definitions and deadlines for the assessment fact.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: open_university.oulad_bronze.assessment_raw
+-- Output: open_university.oulad_silver.assessment_clean
+-- Grain / business key: One assessment; id_assessment.
+--
+-- What to put in this file:
+-- 1. Use named CTEs to trim text, convert ?, blank, NA, N/A and NULL text to SQL NULL, then TRY_CAST
+--    numeric fields.
+-- 2. Keep code_module, code_presentation, id_assessment, assessment_type, date and weight.
+-- 3. Cast id_assessment to BIGINT, date to INT and weight to an agreed DECIMAL type; standardize
+--    assessment_type as CMA, TMA or Exam.
+-- 4. Keep all 11 Exam records with missing date; preserve NULL deadlines and allow negative relative
+--    days.
+-- 5. Validate the assessment key, module-presentation parent, and non-null weight range 0 to 100;
+--    investigate failures.
+-- 6. Keep source column names; add clean_load_timestamp and clean_load_date. Record any invalid
+--    required values for review instead of silently losing rows.
+-- 7. Create the Delta target once if needed. Make repeat loads use the complete business key; rerunning
+--    the same input must not add duplicate business rows.
+--
+-- Validation belongs in tests/02_clean_checks/; these counts describe the current source batch.
+--
+-- Done when: 206 rows for the current batch; unique non-null id_assessment; 11 NULL Exam dates; related
+--    Silver checks pass.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

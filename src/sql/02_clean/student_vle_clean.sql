@@ -1,7 +1,29 @@
--- File: assessment_clean.sql
--- Layer: Silver / Clean
--- Purpose: Clean, cast, deduplicate, and validate assessment records.
--- Source: <catalog>.oulad_bronze.assessment_raw
--- Target: <catalog>.oulad_silver.assessment_clean
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: student_vle_clean.sql
+-- Purpose: Combine repeated daily VLE keys while preserving total recorded clicks.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: open_university.oulad_bronze.student_vle_raw
+-- Output: open_university.oulad_silver.student_vle_clean
+-- Grain / business key: One student-resource-day per presentation; (code_module, code_presentation,
+--    id_student, id_site, date).
+--
+-- What to put in this file:
+-- 1. Use named CTEs to trim text, convert ?, blank, NA, N/A and NULL text to SQL NULL, then TRY_CAST
+--    numeric fields.
+-- 2. Keep the five key columns and sum_click; cast IDs/clicks to BIGINT and date to INT.
+-- 3. Validate complete keys and nonnegative clicks; keep valid negative relative days.
+-- 4. Group by ALL five key columns and compute SUM(sum_click), following the documented project
+--    assumption.
+-- 5. Do not use DISTINCT or keep an arbitrary row to remove repeats; that can discard recorded clicks.
+-- 6. Merge one aggregated source row per key. For a full-source rerun, replace the stored total with
+--    the recomputed total; never add it again.
+-- 7. Defer new-batch accumulation rules until delivery semantics and replay handling are defined.
+-- 8. Keep source column names; add clean_load_timestamp and clean_load_date. Record any invalid
+--    required values for review instead of silently losing rows.
+-- 9. Create the Delta target once if needed. Make repeat loads use the complete business key; rerunning
+--    the same input must not add duplicate business rows.
+--
+-- Validation belongs in tests/02_clean_checks/; these counts describe the current source batch.
+--
+-- Done when: 8,459,320 unique daily rows from 10,655,280 current Bronze rows; typed Bronze and Silver
+--    click sums match; reruns do not increase clicks.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

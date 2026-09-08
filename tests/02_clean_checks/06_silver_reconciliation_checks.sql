@@ -1,0 +1,24 @@
+-- File: 06_silver_reconciliation_checks.sql
+-- Purpose: Prove cleaning preserves the required records, scores and clicks.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: Bronze and Silver assessment, enrollment, registration and VLE data.
+-- Output: Read-only validation queries with failure counts/details and stated expected results; no data
+--    changes.
+--
+-- What to put in this file:
+-- 1. Compare business-key coverage in both directions for the six tables that should retain their
+--    source row grain.
+-- 2. Compare normalized Bronze and Silver counts of scored/missing assessments and SUM(score); classify
+--    invalid conversions separately.
+-- 3. Compare typed Bronze SUM(sum_click) to Silver totals globally, per presentation and by the
+--    complete daily interaction key.
+-- 4. Confirm the 2,195,960-row VLE reduction is from aggregation, not dropped clicks.
+-- 5. Compare outcome/registration populations and rerun the same source to verify stable business-row
+--    counts and measures.
+--
+-- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
+--    result alone is not an automated test.
+--
+-- Done when: No unexplained missing/extra keys or changed measures; click differences are zero and
+--    repeat loads do not inflate totals.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

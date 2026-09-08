@@ -1,7 +1,18 @@
+# File: facts.yml
+# Purpose: Document fact measures, grains and foreign keys, and attach dbt data tests.
+# Status: Add definitions when fact models and their dependencies are implemented.
+#
+# What the assigned member should put here:
+# 1. Replace models: [] with exactly fact_assessments and fact_vle_interactions.
+# 2. Describe assessment grain (id_assessment, id_student) and the full five-column
+#    VLE daily key (code_module, code_presentation, id_student, id_site, date).
+# 3. Document score, is_banked, assessment context, sum_click and audit fields.
+# 4. Add required-key not_null tests and relationships to the five dimensions;
+#    allow documented unknown optional dates and scores.
+# 5. Add score-range, banked-flag and nonnegative-click checks using the selected
+#    dbt version's syntax. Composite uniqueness/reconciliation lives in dbt/tests/.
+# 6. Do not add an enrollment fact; enrollment reporting uses vw_student_outcomes.
+#
+# Done when: tests match actual columns, catch violations, and pass on valid data.
 version: 2
-
-models:
-  # TODO: Add fact model documentation and tests.
-  # Planned models:
-  # - fact_assessments
-  # - fact_vle_interactions
+models: []

@@ -1,6 +1,30 @@
--- File: 01_cohort_analysis.sql
--- Purpose: Analyze student outcomes by module presentation and cohort.
--- Sources: OULAD Gold dimension and fact models
--- Output: Query intended for Metabase visualization
--- Status: TODO - implementation pending
--- Owner: Unassigned
+{{ config(enabled=false) }}
+
+-- File: dim_demographics.sql
+-- Purpose: Store reusable combinations of enrollment demographic attributes.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: Silver student_info_clean.
+-- Output: open_university.oulad_gold.dim_demographics
+-- Grain / business key: One row per distinct combination of gender, region, highest_education,
+--    imd_band, age_band and disability.
+--
+-- What to put in this file:
+-- 1. Write a dbt SELECT with named CTEs, source() for Silver inputs and ref() for other Gold models;
+--    dbt manages the target relation.
+-- 2. Select distinct six-column demographic profiles and expose a stable demographics_key.
+-- 3. Handle NULL consistently in key generation and use null-safe matching when resolving a profile
+--    from an enrollment.
+-- 4. Keep NULL imd_band in stored data; a reporting label may display Unknown.
+-- 5. Do not include final_result, studied_credits or num_of_prev_attempts in the demographic profile.
+-- 6. Resolve each fact's profile from the matching student-module-presentation enrollment, not from
+--    id_student alone.
+-- 7. Use consistent, repeatable dimension keys and mart_load_timestamp/mart_load_date audit fields; do
+--    not regenerate keys in a different order on reruns.
+-- 8. Remove enabled=false only when this model and its dependencies are implemented; add
+--    documentation/tests in the adjacent YAML.
+--
+-- This file is one of the five required dimensions.
+--
+-- Done when: profile combinations and demographics_key are unique; every enrollment resolves to one
+--    profile, including NULL imd_band.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

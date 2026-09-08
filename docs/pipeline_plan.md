@@ -392,313 +392,216 @@ The following values are expected and must not automatically fail the pipeline:
 
 ## 9. Mart Model
 
-The Mart layer will contain dimensions and fact tables for analytics.
+Gold transformations are implemented with dbt in `dbt/models/`, targeting
+`open_university.oulad_gold`. Use `source()` for Silver tables and `ref()`
+for other dbt models.
+
+The agreed professor-aligned scope contains exactly five dimensions and two
+facts, plus one supporting reporting view.
 
 ### Dimensions
 
-| Mart table                | Grain                                            | Main source                |
-| ------------------------- | ------------------------------------------------ | -------------------------- |
-| `dim_course`              | One row per module                               | `courses_clean`            |
-| `dim_module_presentation` | One row per module presentation                  | `courses_clean`            |
-| `dim_student`             | One row per student                              | `student_info_clean`       |
-| `dim_demographics`        | One row per distinct demographic profile         | `student_info_clean`       |
-| `dim_assessment`          | One row per assessment                           | `assessment_clean`         |
-| `dim_vle_resource`        | One row per VLE resource and module presentation | `vle_clean`                |
-| `dim_relative_day`        | One row per relative day                         | Clean relative-date fields |
+| Model | Grain | Main source |
+| --- | --- | --- |
+| `dim_student` | One row per student | `student_info_clean` |
+| `dim_course` | One row per module | `courses_clean` |
+| `dim_module_presentation` | One row per module presentation | `courses_clean` |
+| `dim_date` | One row per relative day | Clean relative-day fields |
+| `dim_demographics` | One row per distinct demographic profile | `student_info_clean` |
 
 ### Facts
 
-| Mart table                | Grain                                             | Main source                               |
-| ------------------------- | ------------------------------------------------- | ----------------------------------------- |
-| `fact_student_enrollment` | One student enrolled in one module presentation   | Student information and registration      |
-| `fact_assessments`        | One student result for one assessment             | Student assessment and assessment context |
-| `fact_vle_interactions`   | One student-resource interaction per relative day | Clean student VLE interactions            |
+| Model | Grain | Main source |
+| --- | --- | --- |
+| `fact_assessments` | One student result for one assessment | Student assessment and assessment context |
+| `fact_vle_interactions` | One student-resource-day per module presentation | Clean student VLE interactions |
+
+### Supporting reporting view
+
+`vw_student_outcomes` has one row per student-module-presentation enrollment.
+It provides the complete population for cohort, dropout and enrollment-level
+reporting, including students without recorded assessment or VLE activity.
+
+Do not add `fact_student_enrollment`, `dim_assessment` or
+`dim_vle_resource` to the required scope. Assessment and resource context
+belongs directly in the respective facts. The required relative-day dimension
+is named `dim_date`.
 
 ---
 
 ## 10. Dimension Specifications
 
-## 10.1 `dim_course`
+Use consistent, repeatable keys and document the chosen key method. Planned
+Gold audit fields are `mart_load_timestamp` and `mart_load_date`; keep the
+implemented names consistent across models and tests.
 
-**Grain:** One row per module.
+### 10.1 `dim_course`
 
-**Possible fields:**
+- Grain/business key: one `code_module`.
+- Fields: `course_key`, `code_module` and audit fields.
+- Take distinct modules from `courses_clean`; do not invent module names.
 
-* `course_key`
-* `code_module`
-* Mart audit columns
+### 10.2 `dim_module_presentation`
 
-The natural course key is `code_module`.
+- Grain/business key: one `code_module + code_presentation` pair.
+- Fields: `presentation_key`, `course_key`, both codes,
+  `module_presentation_length` and audit fields.
+- A presentation code alone is not unique across modules.
+- Expected current-batch rows: 22.
 
----
+### 10.3 `dim_student`
 
-## 10.2 `dim_module_presentation`
+- Grain/business key: one `id_student`.
+- Fields: `student_key`, `id_student` and audit fields.
+- A student may have several enrollments. Keep presentation-dependent
+  `final_result`, `studied_credits` and `num_of_prev_attempts` in
+  `vw_student_outcomes`, not as permanent student attributes.
+- Resolve demographics using the matching enrollment when building facts.
 
-**Grain:** One row per module presentation.
+### 10.4 `dim_demographics`
 
-**Possible fields:**
+- Grain: one distinct combination of `gender`, `region`,
+  `highest_education`, `imd_band`, `age_band` and `disability`.
+- Fields: `demographics_key`, those six attributes and audit fields.
+- Use consistent NULL handling for keys and null-safe profile matching.
+- Preserve missing stored values; reports may display `Unknown`.
 
-* `presentation_key`
-* `course_key`
-* `code_module`
-* `code_presentation`
-* `module_presentation_length`
-* Mart audit columns
+### 10.5 `dim_date`
 
-The business key is:
-
-* `code_module`
-* `code_presentation`
-
----
-
-## 10.3 `dim_student`
-
-**Grain:** One row per student.
-
-**Possible fields:**
-
-* `student_key`
-* `id_student`
-* Mart audit columns
-
-Presentation-dependent attributes such as `final_result`, `studied_credits`, and `num_of_prev_attempts` must not be stored as permanent student attributes. They belong in `fact_student_enrollment`.
-
----
-
-## 10.4 `dim_demographics`
-
-**Grain:** One row per distinct demographic profile.
-
-**Possible fields:**
-
-* `demographics_key`
-* `gender`
-* `region`
-* `highest_education`
-* `imd_band`
-* `age_band`
-* `disability`
-* Mart audit columns
-
-A missing `imd_band` may be displayed as `Unknown` for reporting, but the Clean-layer value must remain NULL.
+- Grain/business key: one non-null `relative_day`.
+- Fields: `date_key`, `relative_day`, `is_before_presentation` and
+  documented optional `relative_week`/`timing_group` fields, plus audit fields.
+- Cover assessment deadlines, submission days, interaction days and registration/
+  unregistration days from Silver.
+- Day 0 means presentation start; negative days are valid.
+- Unknown dates stay NULL and must not be replaced by day 0.
+- Do not generate calendar dates/month names without actual supplied start dates.
 
 ---
 
-## 10.5 `dim_assessment`
+## 11. Fact and Reporting Specifications
 
-**Grain:** One row per assessment.
+### 11.1 `fact_assessments`
 
-**Possible fields:**
+Purpose: support assessment-performance analysis.
 
-* `assessment_key`
-* `id_assessment`
-* `presentation_key`
-* `assessment_type`
-* `assessment_relative_day`
-* `assessment_weight`
-* Mart audit columns
+Business key: `id_assessment + id_student`.
 
----
+Start from `student_assessment_clean`; resolve assessment context by
+`id_assessment`, then enrollment context by all three enrollment-key columns.
 
-## 10.6 `dim_vle_resource`
+Planned fields include:
 
-**Grain:** One VLE resource in one module presentation.
+- `id_assessment`, `id_student`, `code_module`, `code_presentation`
+- `student_key`, `course_key`, `presentation_key`, `demographics_key`
+- `date_key` for the submission day and the original `date_submitted`
+- `assessment_type`, assessment relative date and assessment weight
+- `score`, `is_banked` and audit fields
 
-**Possible fields:**
+Preserve all 173 missing TMA scores as NULL. Unknown Exam deadlines stay NULL.
+If implementing weighted scores or lateness, document the formula, missing-input
+behavior and treatment of banked results. Do not mix assessment weights into an
+undocumented overall grade.
 
-* `vle_resource_key`
-* `id_site`
-* `presentation_key`
-* `activity_type`
-* `week_from`
-* `week_to`
-* Mart audit columns
+Expected current-batch rows: 173,912.
 
----
+### 11.2 `fact_vle_interactions`
 
-## 10.7 `dim_relative_day`
+Purpose: support engagement and resource-activity analysis.
 
-**Grain:** One row per relative day.
+Business key: `code_module + code_presentation + id_student + id_site + date`.
 
-**Possible fields:**
+Start from the already aggregated `student_vle_clean`. Join resources on the
+complete module-presentation-resource key and demographics through the complete
+student enrollment key.
 
-* `relative_day_key`
-* `relative_day`
-* `relative_week`
-* `timing_group`
-* `is_before_presentation`
-* Mart audit columns
+Planned fields include:
 
-Possible timing groups include:
+- The five business-key columns
+- `student_key`, `course_key`, `presentation_key`, `demographics_key`
+- `date_key` for the interaction day
+- `activity_type`, optional resource availability weeks
+- `sum_click` and audit fields
 
-* Before presentation
-* Week 1 to Week 4
-* Week 5 to Week 8
-* Week 9 onward
+Dimension joins must not multiply daily rows or click totals.
 
-OULAD date values represent days relative to the start of a module presentation. They must not be converted into calendar dates unless actual presentation start dates are provided.
+Expected current-batch rows: 8,459,320.
 
----
+### 11.3 `vw_student_outcomes`
 
-## 11. Fact Table Specifications
+Purpose: support cohort, dropout and enrollment-level reporting.
 
-## 11.1 `fact_student_enrollment`
+Business key: `code_module + code_presentation + id_student`.
 
-**Purpose:** Support dropout, completion, and demographic analysis.
+Materialize this dbt model as a view.
 
-**Grain:** One student enrolled in one module presentation.
+1. Start with the complete `student_info_clean` enrollment population.
+2. LEFT JOIN registration on the full enrollment key.
+3. Include dimension keys, `final_result`, `studied_credits`,
+   `num_of_prev_attempts`, `date_registration` and `date_unregistration`.
+4. Derive `is_withdrawn` from `final_result = 'Withdrawn'`.
+5. Aggregate each fact separately to enrollment grain before joining summaries.
+6. Include counts/average scores and clicks/active-day measures with explicit
+   definitions and denominators.
+7. Keep zero-activity enrollments. Use zero for absent activity counts/totals,
+   but keep unknown dates and unavailable average scores NULL.
 
-**Business key:**
+Never join the two detailed facts directly; multiple rows on both sides can
+multiply scores, clicks and enrollment counts.
 
-* `code_module`
-* `code_presentation`
-* `id_student`
-
-**Possible fields:**
-
-* `student_key`
-* `course_key`
-* `presentation_key`
-* `demographics_key`
-* `date_registration`
-* `date_unregistration`
-* `num_of_prev_attempts`
-* `studied_credits`
-* `final_result`
-* `is_withdrawn`
-* Mart audit columns
-
-The `is_withdrawn` field will be based on:
-
-**`final_result = 'Withdrawn'`**
-
-The expected row count is 32,593, provided that the Clean student-information and registration tables remain one-to-one.
-
----
-
-## 11.2 `fact_assessments`
-
-**Purpose:** Support assessment-performance analysis.
-
-**Grain:** One student result for one assessment.
-
-**Business key:**
-
-* `id_assessment`
-* `id_student`
-
-**Possible fields:**
-
-* `student_key`
-* `assessment_key`
-* `course_key`
-* `presentation_key`
-* `demographics_key`
-* `submission_relative_day`
-* `score`
-* `is_banked`
-* `assessment_weight`
-* `weighted_score`
-* Mart audit columns
-
-A missing score must remain NULL. It must not be treated as zero unless a future business requirement explicitly requires it.
-
-The expected fact count is 173,912.
-
----
-
-## 11.3 `fact_vle_interactions`
-
-**Purpose:** Support engagement and VLE activity analysis.
-
-**Grain:** One student interacting with one VLE resource during one module presentation on one relative date.
-
-**Business key:**
-
-* `code_module`
-* `code_presentation`
-* `id_student`
-* `id_site`
-* `date`
-
-**Possible fields:**
-
-* `student_key`
-* `course_key`
-* `presentation_key`
-* `demographics_key`
-* `vle_resource_key`
-* `relative_day_key`
-* `sum_click`
-* Mart audit columns
-
-The expected fact count is 8,459,320.
-
-The total `sum_click` must match the total from the Bronze source after valid type conversion.
+Expected current-batch rows: 32,593, including 10,156 Withdrawn enrollments.
 
 ---
 
 ## 12. Mart Validation Requirements
 
-Every Mart model must be tested for:
+Validate:
 
-* Unique dimension keys
-* Unique fact business keys
-* Missing foreign keys
-* Orphan fact records
-* Invalid measures
-* Missing audit columns
-* Fact-to-Clean row reconciliation
-* Aggregate reconciliation
+- Unique, non-null dimension keys and complete fact business keys
+- Correct key coverage, foreign keys and module-presentation context
+- Nullable optional dates/scores handled according to the assumptions
+- No row multiplication from dimension or reporting joins
+- Audit fields, numeric measures and source-to-target reconciliation
+- Repeat loads that do not inflate business-row counts or measures
 
-Expected fact counts:
+| Model | Expected current-batch rows |
+| --- | ---: |
+| `fact_assessments` | 173,912 |
+| `fact_vle_interactions` | 8,459,320 |
+| `vw_student_outcomes` (view) | 32,593 |
 
-| Fact table                | Expected rows |
-| ------------------------- | ------------: |
-| `fact_student_enrollment` |        32,593 |
-| `fact_assessments`        |       173,912 |
-| `fact_vle_interactions`   |     8,459,320 |
+Assessment keys, scored/missing counts and score totals must reconcile with
+Silver. VLE daily keys and click totals must reconcile with Silver and typed
+Bronze totals. Enrollment outcomes/withdrawals must reconcile with
+`student_info_clean`.
 
-Important aggregate checks:
-
-* Total assessment records must reconcile with `student_assessment_clean`.
-* Total VLE clicks must reconcile with `student_vle_raw`.
-* Enrollment outcomes must reconcile with `student_info_clean`.
-* Withdrawal counts must reconcile with `final_result = 'Withdrawn'`.
+Use model YAML for documentation and reusable dbt data tests. Files in
+`dbt/tests/` are singular tests returning failing rows only. Manual validation
+SQL stays in `tests/03_gold_checks/` and `tests/04_business_checks/`; a result
+display alone does not automatically fail a pipeline.
 
 ---
 
 ## 13. Recommended Build Order
 
-The implementation should follow this order:
+1. Build `courses_clean` and `assessment_clean`.
+2. Build `student_assessment_clean`, `student_info_clean` and
+   `student_registration_clean`.
+3. Build `vle_clean` and aggregate `student_vle_clean`.
+4. Run the Silver validation and reconciliation checks.
+5. Configure dbt connection settings and declare all seven Silver sources.
+6. Build `dim_course`, `dim_module_presentation`, `dim_student`,
+   `dim_demographics` and `dim_date` in dependency order.
+7. Build `fact_assessments` and `fact_vle_interactions`.
+8. Build `vw_student_outcomes` using separate fact summaries.
+9. Run dbt tests and Gold reconciliation checks.
+10. Implement analytics, business checks and Metabase dashboards.
+11. Create the ERD and complete the project README.
+12. Configure and validate orchestration and CI/CD when the relevant steps work.
 
-1. Build `courses_clean`.
-2. Build `assessment_clean`.
-3. Build `student_assessment_clean`.
-4. Build `student_info_clean`.
-5. Build `student_registration_clean`.
-6. Build `vle_clean`.
-7. Build `student_vle_clean`.
-8. Run all Clean validation tests.
-9. Build `dim_course`.
-10. Build `dim_module_presentation`.
-11. Build `dim_student`.
-12. Build `dim_demographics`.
-13. Build `dim_assessment`.
-14. Build `dim_vle_resource`.
-15. Build `dim_relative_day`.
-16. Build `fact_student_enrollment`.
-17. Build `fact_assessments`.
-18. Build `fact_vle_interactions`.
-19. Run all Mart validation tests.
-20. Build the analytics queries.
-21. Create the ERD.
-22. Complete the project README.
-23. Configure the Databricks job.
-24. Add CI/CD validation when the pipeline scripts are stable.
-
-Dimensions must be created before fact tables that reference them.
+dbt `ref()` dependencies define the model build order. Unfinished model/test
+SQL currently keeps `enabled=false`; remove it as each model/test becomes
+ready. A successful parse of disabled guides is not a completed pipeline.
 
 ---
 
@@ -762,34 +665,47 @@ Placeholder batch paths must not be included in runnable SQL files.
 
 ## 16. Repository File Plan
 
-Recommended Clean files:
+Transformation responsibilities:
 
-* `src/sql/02_clean/courses_clean.sql`
-* `src/sql/02_clean/assessment_clean.sql`
-* `src/sql/02_clean/student_assessment_clean.sql`
-* `src/sql/02_clean/student_info_clean.sql`
-* `src/sql/02_clean/student_registration_clean.sql`
-* `src/sql/02_clean/vle_clean.sql`
-* `src/sql/02_clean/student_vle_clean.sql`
+- `src/sql/00_setup/`: catalog/schema initialization and source inspection
+- `src/sql/01_raw/`: seven source-preserving Bronze ingestion scripts
+- `src/sql/02_clean/`: seven Silver transformations
+- `dbt/models/sources/silver_sources.yml`: the seven existing Silver inputs
+- `dbt/models/dimensions/`: the five required dimensions and their YAML
+- `dbt/models/facts/`: the two required facts and their YAML
+- `dbt/models/reporting/`: the outcomes view and its YAML
+- `src/sql/04_analytics/`: four read-only queries for Metabase
 
-Recommended Mart files:
+Validation responsibilities:
 
-* `src/sql/03_mart/dim_course.sql`
-* `src/sql/03_mart/dim_module_presentation.sql`
-* `src/sql/03_mart/dim_student.sql`
-* `src/sql/03_mart/dim_demographics.sql`
-* `src/sql/03_mart/dim_assessment.sql`
-* `src/sql/03_mart/dim_vle_resource.sql`
-* `src/sql/03_mart/dim_relative_day.sql`
-* `src/sql/03_mart/fact_student_enrollment.sql`
-* `src/sql/03_mart/fact_assessments.sql`
-* `src/sql/03_mart/fact_vle_interactions.sql`
+- `tests/01_source_checks/`: source/Bronze profiling
+- `tests/02_clean_checks/`: Silver checks, including Bronze-to-Silver reconciliation
+- `tests/03_gold_checks/`: manual Gold checks
+- `tests/04_business_checks/`: analytics metric validation
+- `dbt/tests/`: automated singular tests returning failing rows
 
-Recommended test areas:
+The existing filename `dbt/tests/assessment_click_reconciliation.sql` refers
+to assessment result/score reconciliation. It does not compare VLE clicks;
+those belong in `vle_click_reconciliation.sql`.
 
-* `tests/02_clean_checks`
-* `tests/03_mart_checks`
-* `tests/04_business_checks`
+Each unfinished file contains its purpose, inputs, intended output, steps to
+implement and completion criteria. Assigned members should replace the guide
+with code, retaining useful purpose/grain comments. Baseline counts describe
+the current source delivery and must be reviewed for a new batch.
+
+### Source-name checks before Silver implementation
+
+The committed Raw loader for student assessments currently targets
+`student_assesments_raw`, while the documented table name and most source
+tests use `student_assessment_raw`. The Bronze row-count check also references
+`assessments_raw` and `student_reg_raw`, while the corresponding loaders use
+`assessment_raw` and `student_registration_raw`.
+
+The ingestion/check owner must confirm the actual Databricks tables and align
+these identifiers before the team runs from a fresh environment. Do not create
+empty substitute tables or treat a previously recorded validation result as
+proof that the committed names match. This guidance update does not execute or
+rename any Databricks table.
 
 ---
 

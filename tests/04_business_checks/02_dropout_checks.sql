@@ -1,5 +1,22 @@
--- File: 01_bronze_row_count_checks.sql
--- Purpose: Compare source-file row counts with Bronze table row counts.
--- Expected result: Source and Bronze counts should match.
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: 02_dropout_checks.sql
+-- Purpose: Validate the dropout rule, denominator and missing timing handling.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: 02_dropout_analysis.sql output and Gold vw_student_outcomes.
+-- Output: Read-only validation queries with failure counts/details and stated expected results; no data
+--    changes.
+--
+-- What to put in this file:
+-- 1. Recompute withdrawn counts from final_result = 'Withdrawn'; check the same all-enrollment
+--    denominator.
+-- 2. For the current unfiltered batch, expect 10,156 Withdrawn among 32,593 enrollments.
+-- 3. Confirm 93 Withdrawn records without unregistration dates still count as dropout and have Unknown
+--    timing.
+-- 4. Confirm the 9 Fail records with unregistration dates are not classified as dropout; guard division
+--    by zero.
+--
+-- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
+--    result alone is not an automated test.
+--
+-- Done when: Counts and rates reconcile, and known versus unknown withdrawal timing partitions the
+--    withdrawn population.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

@@ -1,7 +1,29 @@
--- File: assessment_clean.sql
--- Layer: Silver / Clean
--- Purpose: Clean, cast, deduplicate, and validate assessment records.
--- Source: <catalog>.oulad_bronze.assessment_raw
--- Target: <catalog>.oulad_silver.assessment_clean
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: student_assessment_clean.sql
+-- Purpose: Prepare each student's assessment result, submission day and banked-result flag.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: open_university.oulad_bronze.student_assessment_raw
+-- Output: open_university.oulad_silver.student_assessment_clean
+-- Grain / business key: One student result for one assessment; (id_assessment, id_student).
+--
+-- What to put in this file:
+-- 1. Use named CTEs to trim text, convert ?, blank, NA, N/A and NULL text to SQL NULL, then TRY_CAST
+--    numeric fields.
+-- 2. Keep id_assessment, id_student, date_submitted, is_banked and score.
+-- 3. Cast both IDs to BIGINT, date_submitted to INT, is_banked to INT (0 or 1), and score to an agreed
+--    DECIMAL type.
+-- 4. Preserve all 173 missing TMA scores as NULL. A missing score is not zero or an automatic failure.
+-- 5. Validate scores from 0 to 100 when present and join to assessment_clean by id_assessment to
+--    validate context; preserve negative submission days.
+-- 6. Keep source column names; add clean_load_timestamp and clean_load_date. Record any invalid
+--    required values for review instead of silently losing rows.
+-- 7. Create the Delta target once if needed. Make repeat loads use the complete business key; rerunning
+--    the same input must not add duplicate business rows.
+--
+-- Before implementation: the existing Raw loader spells its target student_assesments_raw.
+-- Confirm and align the physical table with the documented student_assessment_raw name before reading
+--    it; do not create a second empty source as a workaround.
+-- Validation belongs in tests/02_clean_checks/; these counts describe the current source batch.
+--
+-- Done when: 173,912 rows for the current batch; unique key pairs; 173 NULL scores; valid assessment
+--    parents and related Silver checks pass.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

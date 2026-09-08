@@ -1,7 +1,29 @@
--- File: assessment_clean.sql
--- Layer: Silver / Clean
--- Purpose: Clean, cast, deduplicate, and validate assessment records.
--- Source: <catalog>.oulad_bronze.assessment_raw
--- Target: <catalog>.oulad_silver.assessment_clean
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: student_info_clean.sql
+-- Purpose: Prepare the complete enrollment population, demographics and final outcomes.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: open_university.oulad_bronze.student_info_raw
+-- Output: open_university.oulad_silver.student_info_clean
+-- Grain / business key: One student enrollment; (code_module, code_presentation, id_student).
+--
+-- What to put in this file:
+-- 1. Use named CTEs to trim text, convert ?, blank, NA, N/A and NULL text to SQL NULL, then TRY_CAST
+--    numeric fields.
+-- 2. Keep codes, id_student, gender, region, highest_education, imd_band, age_band,
+--    num_of_prev_attempts, studied_credits, disability and final_result.
+-- 3. Cast id_student to BIGINT and attempts/credits to INT; trim categories consistently without
+--    changing their meaning.
+-- 4. Keep final_result categories Distinction, Fail, Pass and Withdrawn. Preserve 1,111 missing
+--    imd_band values as NULL.
+-- 5. Do not deduplicate by id_student alone: a student can enroll in several module presentations.
+-- 6. Validate the course/presentation parent and nonnegative attempts and credits. Retain students with
+--    no recorded assessment or VLE activity.
+-- 7. Keep source column names; add clean_load_timestamp and clean_load_date. Record any invalid
+--    required values for review instead of silently losing rows.
+-- 8. Create the Delta target once if needed. Make repeat loads use the complete business key; rerunning
+--    the same input must not add duplicate business rows.
+--
+-- Validation belongs in tests/02_clean_checks/; these counts describe the current source batch.
+--
+-- Done when: 32,593 enrollments for the current batch; unique complete enrollment keys; 1,111 NULL
+--    imd_band values; related Silver checks pass.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

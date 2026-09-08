@@ -1,0 +1,30 @@
+# File: ci.yml
+# Purpose: Validate proposed project changes before merging.
+# Status: Implementation guide. Manual trigger only; the job is deliberately skipped.
+#
+# What the assigned member should put here:
+# 1. Choose and pin the required tools; check out the exact revision being validated.
+# 2. Add SQL/YAML checks and dbt parsing for implemented files; report unfinished work honestly.
+# 3. Run implemented dbt models/tests against an agreed development target when needed.
+# 4. Make validation failures stop the job. A printed PASS or a skipped job is not proof of valid data.
+# 5. Configure pull-request triggers, minimal permissions and only the credentials needed.
+# 6. Enable the real job after confirming it passes valid changes and rejects a known invalid change.
+#
+# Done when: real checks run and correctly detect failures.
+# Replace the skipped job below with implementation; it does not validate or deploy anything.
+# Reference: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+name: CI (implementation pending)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  implementation-pending:
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Replace with real validation steps before enabling
+        run: exit 1

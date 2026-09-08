@@ -1,5 +1,21 @@
--- File: 01_bronze_row_count_checks.sql
--- Purpose: Compare source-file row counts with Bronze table row counts.
--- Expected result: Source and Bronze counts should match.
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: 03_fact_relationship_checks.sql
+-- Purpose: Find unresolved fact dimension references and mismatched presentation context.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: Both Gold facts and the five required dimensions.
+-- Output: Read-only validation queries with failure counts/details and stated expected results; no data
+--    changes.
+--
+-- What to put in this file:
+-- 1. LEFT JOIN each actual foreign key to its dimension and report unmatched required keys.
+-- 2. Check that course/module, presentation and enrollment-specific demographics belong to the same
+--    source context.
+-- 3. Validate date_key against the event's relative day; apply each date role separately if more than
+--    one is implemented.
+-- 4. Treat a documented NULL optional deadline as unknown, not an orphan; known days must resolve.
+-- 5. Check row counts before and after joins so a duplicate parent cannot pass unnoticed.
+--
+-- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
+--    result alone is not an automated test.
+--
+-- Done when: Zero unexplained required NULL/orphan foreign keys, context mismatches or multiplied rows.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

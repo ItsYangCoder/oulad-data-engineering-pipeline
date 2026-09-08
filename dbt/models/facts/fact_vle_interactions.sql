@@ -1,7 +1,34 @@
 {{ config(enabled=false) }}
 
--- Model: dim_student
--- Purpose: Store one record per student.
--- Grain: One row per unique student ID.
--- Source: Silver student and demographic tables.
--- Status: TODO - implementation pending
+-- File: fact_vle_interactions.sql
+-- Purpose: Store daily resource engagement with reporting keys and unchanged click totals.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: Silver student_vle_clean, vle_clean and student_info_clean; the five required dimensions via
+--    ref().
+-- Output: open_university.oulad_gold.fact_vle_interactions
+-- Grain / business key: One row per (code_module, code_presentation, id_student, id_site, date).
+--
+-- What to put in this file:
+-- 1. Write a dbt SELECT with named CTEs, source() for Silver inputs and ref() for other Gold models;
+--    dbt manages the target relation.
+-- 2. Start from student_vle_clean, whose repeated source keys have already been aggregated.
+-- 3. Keep the complete five-column business key and sum_click.
+-- 4. Resolve student_key, course_key, presentation_key, demographics_key and date_key (interaction
+--    day).
+-- 5. Join resources on code_module + code_presentation + id_site; join student_info on code_module +
+--    code_presentation + id_student.
+-- 6. Carry activity_type and optional resource availability weeks directly in the fact; no separate
+--    resource dimension is required.
+-- 7. Do not sum already aggregated rows again because a join produced duplicates. Check parent
+--    uniqueness and retain NULL optional resource attributes.
+-- 8. Use consistent, repeatable dimension keys and mart_load_timestamp/mart_load_date audit fields; do
+--    not regenerate keys in a different order on reruns.
+-- 9. Remove enabled=false only when this model and its dependencies are implemented; add
+--    documentation/tests in the adjacent YAML.
+--
+-- Validate with facts.yml, dbt/tests/fact_vle_interactions_grain.sql and
+--    dbt/tests/vle_click_reconciliation.sql.
+--
+-- Done when: 8,459,320 current-batch rows; unique daily keys; Silver-to-Gold click totals match
+--    globally and per presentation.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

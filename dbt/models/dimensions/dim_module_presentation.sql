@@ -1,6 +1,26 @@
--- File: 01_cohort_analysis.sql
--- Purpose: Analyze student outcomes by module presentation and cohort.
--- Sources: OULAD Gold dimension and fact models
--- Output: Query intended for Metabase visualization
--- Status: TODO - implementation pending
--- Owner: Unassigned
+{{ config(enabled=false) }}
+
+-- File: dim_module_presentation.sql
+-- Purpose: Describe a particular delivery of a module.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: Silver courses_clean and ref('dim_course').
+-- Output: open_university.oulad_gold.dim_module_presentation
+-- Grain / business key: One row per (code_module, code_presentation).
+--
+-- What to put in this file:
+-- 1. Write a dbt SELECT with named CTEs, source() for Silver inputs and ref() for other Gold models;
+--    dbt manages the target relation.
+-- 2. Keep presentation_key, course_key, code_module, code_presentation and module_presentation_length.
+-- 3. Derive the presentation key from BOTH codes; code_presentation alone is shared across modules.
+-- 4. Resolve course_key without multiplying rows; preserve the source presentation length.
+-- 5. Do not infer an exact calendar start date from a presentation code.
+-- 6. Use consistent, repeatable dimension keys and mart_load_timestamp/mart_load_date audit fields; do
+--    not regenerate keys in a different order on reruns.
+-- 7. Remove enabled=false only when this model and its dependencies are implemented; add
+--    documentation/tests in the adjacent YAML.
+--
+-- This file is one of the five required dimensions.
+--
+-- Done when: 22 rows for the current batch; unique presentation keys/business-key pairs; all course
+--    references resolve.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

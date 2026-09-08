@@ -1,5 +1,20 @@
--- File: 01_bronze_row_count_checks.sql
--- Purpose: Compare source-file row counts with Bronze table row counts.
--- Expected result: Source and Bronze counts should match.
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: 02_fact_grain_checks.sql
+-- Purpose: Detect duplicated or missing fact business keys after dimension joins.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: Gold fact_assessments and fact_vle_interactions.
+-- Output: Read-only validation queries with failure counts/details and stated expected results; no data
+--    changes.
+--
+-- What to put in this file:
+-- 1. Check assessment uniqueness on id_assessment + id_student.
+-- 2. Check VLE uniqueness on code_module + code_presentation + id_student + id_site + date.
+-- 3. Return missing-key rows and GROUP BY full-key groups with COUNT(*) > 1.
+-- 4. Report expected current-batch fact counts 173,912 and 8,459,320 separately; count equality alone
+--    does not prove uniqueness.
+--
+-- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
+--    result alone is not an automated test.
+--
+-- Done when: No key violations and correct fact populations; mirror the same rules as the dbt grain
+--    tests.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

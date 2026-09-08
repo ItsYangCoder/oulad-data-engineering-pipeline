@@ -1,7 +1,35 @@
 {{ config(enabled=false) }}
 
--- Model: dim_student
--- Purpose: Store one record per student.
--- Grain: One row per unique student ID.
--- Source: Silver student and demographic tables.
--- Status: TODO - implementation pending
+-- File: fact_assessments.sql
+-- Purpose: Store student assessment results with reporting keys and assessment context.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: Silver student_assessment_clean, assessment_clean and student_info_clean; the five required
+--    dimensions via ref().
+-- Output: open_university.oulad_gold.fact_assessments
+-- Grain / business key: One row per (id_assessment, id_student).
+--
+-- What to put in this file:
+-- 1. Write a dbt SELECT with named CTEs, source() for Silver inputs and ref() for other Gold models;
+--    dbt manages the target relation.
+-- 2. Start from all student_assessment_clean rows. Resolve assessment context by id_assessment, then
+--    enrollment context by code_module + code_presentation + id_student.
+-- 3. Keep id_assessment, id_student, code_module, code_presentation, date_submitted, is_banked and
+--    score.
+-- 4. Resolve student_key, course_key, presentation_key, demographics_key and date_key (submission day).
+--    Keep assessment_type, assessment date and weight directly in this fact.
+-- 5. Preserve all NULL scores and unknown Exam deadlines. Optional lateness/weighted_score must stay
+--    NULL when required inputs are missing; document how banked results are treated.
+-- 6. Prevent join multiplication by checking every parent key first. Retain unmatched source records
+--    for investigation rather than silently dropping them.
+-- 7. Do not create dim_assessment or an enrollment fact. Use the agreed two-fact design.
+-- 8. Use consistent, repeatable dimension keys and mart_load_timestamp/mart_load_date audit fields; do
+--    not regenerate keys in a different order on reruns.
+-- 9. Remove enabled=false only when this model and its dependencies are implemented; add
+--    documentation/tests in the adjacent YAML.
+--
+-- Validate with facts.yml, dbt/tests/fact_assessments_grain.sql and
+--    dbt/tests/assessment_click_reconciliation.sql.
+--
+-- Done when: 173,912 current-batch rows; unique result pairs; 173 NULL scores retained; keys and
+--    score/count reconciliation pass.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

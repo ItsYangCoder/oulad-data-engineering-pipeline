@@ -1,5 +1,32 @@
--- File: 01_bronze_row_count_checks.sql
--- Purpose: Compare source-file row counts with Bronze table row counts.
--- Expected result: Source and Bronze counts should match.
--- Status: TODO - implementation pending
--- Owner: Unassigned
+# File: dbt_project.yml
+# Purpose: Tell dbt where this OULAD project keeps models, tests and macros.
+# Status: Starter configuration; connections and transformations still need implementation.
+#
+# What the assigned member should put here:
+# 1. Keep the project/profile name consistent with profiles.yml.example.
+# 2. Set folder paths and model materializations for five dimensions, two facts
+#    and the vw_student_outcomes reporting view.
+# 3. Agree the dbt/adapter versions, target schema and incremental settings before
+#    enabling models. Add only configuration the project actually uses.
+# 4. Keep credentials in environment variables or a local profile outside Git.
+# 5. Test project parsing, then validate implemented models in a development schema.
+#
+# Unfinished SQL models/tests are disabled individually in their own files.
+# A successful parse of this scaffold does not mean a pipeline or data test has run.
+# Reference: https://docs.getdbt.com/reference/dbt_project.yml
+name: oulad_project
+version: "1.0.0"
+config-version: 2
+profile: oulad_project
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+models:
+  oulad_project:
+    dimensions:
+      +materialized: table
+    facts:
+      +materialized: table
+    reporting:
+      +materialized: view

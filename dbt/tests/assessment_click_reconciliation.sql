@@ -1,0 +1,26 @@
+{{ config(enabled=false) }}
+
+-- File: assessment_click_reconciliation.sql
+-- Purpose: Reconcile assessment results and scores from Silver to Gold.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: source('oulad_silver', 'student_assessment_clean'), assessment_clean for context, and
+--    ref('fact_assessments').
+-- Output: A dbt singular test: one SELECT/CTE query returning failing rows only.
+--
+-- What to put in this file:
+-- 1. Despite this existing filename, this test is for ASSESSMENTS; it does not compare VLE clicks or
+--    join the two facts.
+-- 2. Compare result-key coverage, total result count, non-null score count, NULL score count and
+--    SUM(score).
+-- 3. Compare globally and per module presentation using assessment_clean to resolve Silver presentation
+--    context.
+-- 4. Return only missing/extra keys or nonzero differences; handle NULL aggregates explicitly.
+-- 5. If renaming this file later, update references consistently; a clearer name would be
+--    assessment_reconciliation.sql.
+-- 6. Remove enabled=false when the SQL and upstream model are ready, then run this test and verify it
+--    catches a deliberate failing case in development.
+--
+--
+-- Done when: Zero returned mismatches; expected current-batch totals include 173,912 results and 173
+--    NULL scores.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

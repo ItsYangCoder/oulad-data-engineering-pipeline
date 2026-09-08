@@ -1,10 +1,18 @@
+# File: dimensions.yml
+# Purpose: Document the five dimension models and attach reusable dbt data tests.
+# Status: Add definitions as each dimension is implemented; [] is an empty list.
+#
+# What the assigned member should put here:
+# 1. Replace models: [] with entries named dim_student, dim_course,
+#    dim_module_presentation, dim_date and dim_demographics.
+# 2. For each, describe the grain, columns, business keys and audit fields.
+# 3. Add unique and not_null tests to each dimension key and applicable natural key.
+# 4. Test presentation uniqueness across both codes and demographic uniqueness across
+#    all six profile attributes; use a composite/singular test where appropriate.
+# 5. Document nullable demographic values and negative relative days as valid.
+# 6. Add relationship tests for actual dimension references, such as course_key.
+#
+# Done when: documentation matches the implemented columns and enabled tests pass
+# on those models. A field being nullable is not automatically a quality failure.
 version: 2
-
-models:
-  # TODO: Add dimension model documentation and tests.
-  # Planned models:
-  # - dim_student
-  # - dim_course
-  # - dim_module_presentation
-  # - dim_date
-  # - dim_demographics
+models: []

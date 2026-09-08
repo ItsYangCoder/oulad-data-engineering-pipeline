@@ -1,5 +1,20 @@
--- File: 01_bronze_row_count_checks.sql
--- Purpose: Compare source-file row counts with Bronze table row counts.
--- Expected result: Source and Bronze counts should match.
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: 01_dimension_key_checks.sql
+-- Purpose: Validate each of the five required dimensions at its own grain.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: Gold dim_student, dim_course, dim_module_presentation, dim_date and dim_demographics.
+-- Output: Read-only validation queries with failure counts/details and stated expected results; no data
+--    changes.
+--
+-- What to put in this file:
+-- 1. Check each surrogate/natural key for uniqueness and NULLs.
+-- 2. Check student by id_student, course by code_module, presentation by both codes, date by
+--    relative_day, demographics by the six profile attributes.
+-- 3. Check dimension coverage against Silver; expect 22 module presentations for the current batch.
+-- 4. Verify NULL demographic attributes match consistently, and negative relative days remain valid.
+--
+-- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
+--    result alone is not an automated test.
+--
+-- Done when: All keys are unique/non-null and required Silver business values have exactly one
+--    dimension mapping.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

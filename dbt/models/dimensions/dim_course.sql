@@ -1,7 +1,25 @@
 {{ config(enabled=false) }}
 
--- Model: dim_student
--- Purpose: Store one record per student.
--- Grain: One row per unique student ID.
--- Source: Silver student and demographic tables.
--- Status: TODO - implementation pending
+-- File: dim_course.sql
+-- Purpose: Identify each module once for course-level reporting.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: Silver courses_clean.
+-- Output: open_university.oulad_gold.dim_course
+-- Grain / business key: One row per code_module, across all presentations.
+--
+-- What to put in this file:
+-- 1. Write a dbt SELECT with named CTEs, source() for Silver inputs and ref() for other Gold models;
+--    dbt manages the target relation.
+-- 2. Select distinct code_module values and expose a stable course_key.
+-- 3. Keep course_key, code_module and audit fields.
+-- 4. Keep presentation code/length in dim_module_presentation. Module names are not supplied, so do not
+--    invent them.
+-- 5. Use consistent, repeatable dimension keys and mart_load_timestamp/mart_load_date audit fields; do
+--    not regenerate keys in a different order on reruns.
+-- 6. Remove enabled=false only when this model and its dependencies are implemented; add
+--    documentation/tests in the adjacent YAML.
+--
+-- This file is one of the five required dimensions.
+--
+-- Done when: course_key and code_module are unique/non-null, with one row per distinct Silver module.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

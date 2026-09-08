@@ -1,6 +1,30 @@
--- File: 01_cohort_analysis.sql
--- Purpose: Analyze student outcomes by module presentation and cohort.
--- Sources: OULAD Gold dimension and fact models
--- Output: Query intended for Metabase visualization
--- Status: TODO - implementation pending
--- Owner: Unassigned
+{{ config(enabled=false) }}
+
+-- File: dim_date.sql
+-- Purpose: Provide a shared relative-day lookup for submission, interaction and registration timing.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: Silver assessment_clean.date, student_assessment_clean.date_submitted, student_vle_clean.date,
+--    and both student_registration_clean date fields.
+-- Output: open_university.oulad_gold.dim_date
+-- Grain / business key: One row per non-null relative_day.
+--
+-- What to put in this file:
+-- 1. Write a dbt SELECT with named CTEs, source() for Silver inputs and ref() for other Gold models;
+--    dbt manages the target relation.
+-- 2. Collect distinct relative days across the listed inputs; include day 0 and every valid negative or
+--    positive day used downstream.
+-- 3. Expose date_key, relative_day and is_before_presentation; document any relative_week or
+--    timing_group calculation.
+-- 4. Use day 0 to mean presentation start. OULAD event dates are offsets, not real calendar dates.
+-- 5. Do not fill missing source dates with day 0 or generate calendar month/day names without supplied
+--    start dates.
+-- 6. Use consistent, repeatable dimension keys and mart_load_timestamp/mart_load_date audit fields; do
+--    not regenerate keys in a different order on reruns.
+-- 7. Remove enabled=false only when this model and its dependencies are implemented; add
+--    documentation/tests in the adjacent YAML.
+--
+-- This file is one of the five required dimensions.
+--
+-- Done when: date_key and relative_day are unique/non-null; every known event day has one match;
+--    unknown dates stay nullable.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

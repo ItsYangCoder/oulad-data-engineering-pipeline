@@ -1,7 +1,29 @@
--- File: assessment_clean.sql
--- Layer: Silver / Clean
--- Purpose: Clean, cast, deduplicate, and validate assessment records.
--- Source: <catalog>.oulad_bronze.assessment_raw
--- Target: <catalog>.oulad_silver.assessment_clean
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: vle_clean.sql
+-- Purpose: Prepare VLE resource descriptions and optional availability weeks.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: open_university.oulad_bronze.vle_raw
+-- Output: open_university.oulad_silver.vle_clean
+-- Grain / business key: One resource per module presentation; (code_module, code_presentation,
+--    id_site).
+--
+-- What to put in this file:
+-- 1. Use named CTEs to trim text, convert ?, blank, NA, N/A and NULL text to SQL NULL, then TRY_CAST
+--    numeric fields.
+-- 2. Keep code_module, code_presentation, id_site, activity_type, week_from and week_to.
+-- 3. Cast id_site to BIGINT and week fields to INT; standardize activity_type consistently.
+-- 4. Preserve 5,243 rows with both availability weeks missing; NULL means the source does not specify
+--    that period.
+-- 5. Check week_from <= week_to when both exist; validate the complete resource key and
+--    course/presentation parent.
+-- 6. Keep resource attributes here for the VLE fact; the agreed Gold design has no separate
+--    dim_vle_resource model.
+-- 7. Keep source column names; add clean_load_timestamp and clean_load_date. Record any invalid
+--    required values for review instead of silently losing rows.
+-- 8. Create the Delta target once if needed. Make repeat loads use the complete business key; rerunning
+--    the same input must not add duplicate business rows.
+--
+-- Validation belongs in tests/02_clean_checks/; these counts describe the current source batch.
+--
+-- Done when: 6,364 resources for the current batch; unique composite keys; expected NULL weeks
+--    retained; related Silver checks pass.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

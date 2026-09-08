@@ -1,6 +1,25 @@
--- File: 01_cohort_analysis.sql
--- Purpose: Analyze student outcomes by module presentation and cohort.
--- Sources: OULAD Gold dimension and fact models
--- Output: Query intended for Metabase visualization
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: 03_assessment_performance.sql
+-- Purpose: Summarize scores, scoring coverage and submission patterns.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: open_university.oulad_gold.fact_assessments with relevant dimensions; vw_student_outcomes for
+--    any enrollment-level comparison.
+-- Output: Read-only result set for Metabase; no CREATE, MERGE, INSERT or table rebuild.
+-- Grain / business key: One output row per chosen module-presentation and assessment type.
+--
+-- What to put in this file:
+-- 1. Return result_count, scored_result_count, missing_score_count and AVG(score), excluding NULL
+--    scores from the average.
+-- 2. Keep 173 missing TMA scores visible in coverage counts; do not turn them into zero or automatic
+--    failures.
+-- 3. Separate CMA, TMA and Exam; document weighting before producing any weighted metric, rather than
+--    adding incompatible weights.
+-- 4. Only calculate lateness when a valid deadline/submission day exists and a banked-result rule is
+--    documented.
+-- 5. State any passing-score threshold before computing a pass rate; use scored records as the stated
+--    denominator.
+-- 6. Aggregate facts separately to enrollment grain before comparing scores with VLE engagement.
+--
+--
+-- Done when: Counts, scored denominators and average scores reconcile to the fact;
+--    tests/04_business_checks/03_assessment_checks.sql passes.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

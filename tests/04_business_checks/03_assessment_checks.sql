@@ -1,5 +1,22 @@
--- File: 01_bronze_row_count_checks.sql
--- Purpose: Compare source-file row counts with Bronze table row counts.
--- Expected result: Source and Bronze counts should match.
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: 03_assessment_checks.sql
+-- Purpose: Validate reported score statistics and denominators.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: 03_assessment_performance.sql output and Gold fact_assessments.
+-- Output: Read-only validation queries with failure counts/details and stated expected results; no data
+--    changes.
+--
+-- What to put in this file:
+-- 1. Recompute result_count, COUNT(score), missing_score_count and AVG(score) under identical filters.
+-- 2. Check result_count = scored_result_count + missing_score_count; preserve all 173 missing TMA
+--    scores in coverage.
+-- 3. Check any pass-rate threshold, weighting and lateness rules match the analytics definition and
+--    handle banked results explicitly.
+-- 4. Compare enrollment-level score/engagement analyses against separately aggregated facts to detect
+--    double counting.
+--
+-- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
+--    result alone is not an automated test.
+--
+-- Done when: Reported values match the fact and no unknown score/deadline becomes a fabricated zero or
+--    failure.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

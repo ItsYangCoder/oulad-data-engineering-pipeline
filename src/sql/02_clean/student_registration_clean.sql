@@ -1,7 +1,27 @@
--- File: assessment_clean.sql
--- Layer: Silver / Clean
--- Purpose: Clean, cast, deduplicate, and validate assessment records.
--- Source: <catalog>.oulad_bronze.assessment_raw
--- Target: <catalog>.oulad_silver.assessment_clean
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: student_registration_clean.sql
+-- Purpose: Prepare registration and withdrawal timing without inventing missing dates.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: open_university.oulad_bronze.student_registration_raw
+-- Output: open_university.oulad_silver.student_registration_clean
+-- Grain / business key: One registration; (code_module, code_presentation, id_student).
+--
+-- What to put in this file:
+-- 1. Use named CTEs to trim text, convert ?, blank, NA, N/A and NULL text to SQL NULL, then TRY_CAST
+--    numeric fields.
+-- 2. Keep code_module, code_presentation, id_student, date_registration and date_unregistration.
+-- 3. Cast id_student to BIGINT and both relative-day fields to INT. Negative days are valid.
+-- 4. Preserve 45 NULL registration dates and 22,521 NULL unregistration dates for the current batch.
+-- 5. Join to student_info_clean using the full enrollment key to inspect 93 Withdrawn records without a
+--    withdrawal date and 9 Fail records with one.
+-- 6. Keep dates nullable. Dropout is defined downstream by final_result = 'Withdrawn', not by date
+--    presence alone.
+-- 7. Keep source column names; add clean_load_timestamp and clean_load_date. Record any invalid
+--    required values for review instead of silently losing rows.
+-- 8. Create the Delta target once if needed. Make repeat loads use the complete business key; rerunning
+--    the same input must not add duplicate business rows.
+--
+-- Validation belongs in tests/02_clean_checks/; these counts describe the current source batch.
+--
+-- Done when: 32,593 rows and complete unique enrollment keys; expected missing dates are retained;
+--    related Silver checks pass.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

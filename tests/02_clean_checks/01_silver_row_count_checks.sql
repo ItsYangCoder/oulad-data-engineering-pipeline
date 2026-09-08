@@ -1,5 +1,22 @@
--- File: 01_bronze_row_count_checks.sql
--- Purpose: Compare source-file row counts with Bronze table row counts.
--- Expected result: Source and Bronze counts should match.
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: 01_silver_row_count_checks.sql
+-- Purpose: Explain every Bronze-to-Silver row-count difference.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: All seven Bronze and matching Silver tables.
+-- Output: Read-only validation queries with failure counts/details and stated expected results; no data
+--    changes.
+--
+-- What to put in this file:
+-- 1. Return table_name, bronze_count, silver_count, expected_count, difference and a clear status for
+--    the current batch.
+-- 2. Expect assessment 206; courses 22; student_assessment 173,912; student_info and
+--    student_registration 32,593 each; vle 6,364.
+-- 3. Expect student_vle to change from 10,655,280 source rows to 8,459,320 complete daily keys after
+--    aggregation.
+-- 4. Compare with live Bronze counts and document any new-batch baseline changes; fixed counts are not
+--    universal thresholds.
+--
+-- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
+--    result alone is not an automated test.
+--
+-- Done when: All differences are explained by the documented transformation, with no unexpected loss.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

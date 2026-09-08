@@ -1,5 +1,21 @@
--- File: 01_bronze_row_count_checks.sql
--- Purpose: Compare source-file row counts with Bronze table row counts.
--- Expected result: Source and Bronze counts should match.
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: 04_engagement_checks.sql
+-- Purpose: Validate click totals, active-student counts and zero-activity coverage.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: 04_vle_engagement.sql output, Gold fact_vle_interactions and vw_student_outcomes.
+-- Output: Read-only validation queries with failure counts/details and stated expected results; no data
+--    changes.
+--
+-- What to put in this file:
+-- 1. Recompute clicks and distinct active students under the exact report filters and active-student
+--    definition.
+-- 2. Validate enrollment active days using distinct dates across all resources; do not sum resource-day
+--    counts.
+-- 3. Check full-enrollment participation rates include zero-activity students from the outcomes view.
+-- 4. Compare per-presentation totals to the VLE fact and confirm dimension joins preserve click totals.
+-- 5. Check relative-time bins consistently handle negative days and day 0.
+--
+-- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
+--    result alone is not an automated test.
+--
+-- Done when: Click totals and participation measures reconcile with the stated grain and denominator.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

@@ -1,5 +1,21 @@
--- File: 01_bronze_row_count_checks.sql
--- Purpose: Compare source-file row counts with Bronze table row counts.
--- Expected result: Source and Bronze counts should match.
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: 01_cohort_checks.sql
+-- Purpose: Validate cohort report populations and outcome percentages.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: 01_cohort_analysis.sql output, Gold vw_student_outcomes and Silver student_info_clean.
+-- Output: Read-only validation queries with failure counts/details and stated expected results; no data
+--    changes.
+--
+-- What to put in this file:
+-- 1. Recompute totals using the same cohort filters and denominator as the analytics query.
+-- 2. Confirm Distinction + Pass + Fail + Withdrawn counts equal all cohort enrollments.
+-- 3. Confirm each enrollment appears once per intended grouping and Unknown demographics remain
+--    included.
+-- 4. Check rates stay in range and mutually exclusive outcome percentages sum to 100 within a stated
+--    rounding tolerance.
+--
+-- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
+--    result alone is not an automated test.
+--
+-- Done when: Cohort figures reconcile to the complete enrollment population without duplicate or
+--    excluded enrollments.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

@@ -1,5 +1,22 @@
--- File: 01_bronze_row_count_checks.sql
--- Purpose: Compare source-file row counts with Bronze table row counts.
--- Expected result: Source and Bronze counts should match.
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: 05_silver_relationship_checks.sql
+-- Purpose: Find Silver child rows without their required parent.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: All seven Silver tables.
+-- Output: Read-only validation queries with failure counts/details and stated expected results; no data
+--    changes.
+--
+-- What to put in this file:
+-- 1. Check student_assessment -> assessment on id_assessment; assessment, student_info and vle ->
+--    courses on both module/presentation codes.
+-- 2. Check registration -> student_info on the complete enrollment key.
+-- 3. Check student_vle -> vle on module + presentation + id_site, and -> student_info on module +
+--    presentation + id_student.
+-- 4. Use assessment context to validate student_assessment against the full enrollment key; never join
+--    student_id alone for enrollment context.
+-- 5. Return relationship name, orphan count and failing keys or detail queries.
+--
+-- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
+--    result alone is not an automated test.
+--
+-- Done when: Zero unexplained orphan rows using complete composite joins.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

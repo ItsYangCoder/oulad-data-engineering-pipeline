@@ -1,6 +1,26 @@
--- File: 01_cohort_analysis.sql
--- Purpose: Analyze student outcomes by module presentation and cohort.
--- Sources: OULAD Gold dimension and fact models
--- Output: Query intended for Metabase visualization
--- Status: TODO - implementation pending
--- Owner: Unassigned
+{{ config(enabled=false) }}
+
+-- File: dim_student.sql
+-- Purpose: Identify each student once across all their module enrollments.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: Silver student_info_clean, via source('oulad_silver', 'student_info_clean').
+-- Output: open_university.oulad_gold.dim_student
+-- Grain / business key: One row per id_student.
+--
+-- What to put in this file:
+-- 1. Write a dbt SELECT with named CTEs, source() for Silver inputs and ref() for other Gold models;
+--    dbt manages the target relation.
+-- 2. Select distinct non-null id_student values and expose a stable student_key.
+-- 3. Keep only student identity and audit fields at this grain.
+-- 4. Do not take an arbitrary enrollment's final_result, studied_credits, attempts or demographic
+--    profile as a permanent student attribute; these can depend on the enrollment.
+-- 5. Use consistent, repeatable dimension keys and mart_load_timestamp/mart_load_date audit fields; do
+--    not regenerate keys in a different order on reruns.
+-- 6. Remove enabled=false only when this model and its dependencies are implemented; add
+--    documentation/tests in the adjacent YAML.
+--
+-- This file is one of the five required dimensions.
+--
+-- Done when: student_key and id_student are unique/non-null, and every Silver student maps to exactly
+--    one dimension row.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

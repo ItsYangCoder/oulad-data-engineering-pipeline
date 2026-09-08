@@ -1,5 +1,23 @@
--- File: 01_bronze_row_count_checks.sql
--- Purpose: Compare source-file row counts with Bronze table row counts.
--- Expected result: Source and Bronze counts should match.
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: 04_gold_reconciliation_checks.sql
+-- Purpose: Prove Gold models preserve Silver populations and measures.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: Both Gold facts, vw_student_outcomes and corresponding Silver tables.
+-- Output: Read-only validation queries with failure counts/details and stated expected results; no data
+--    changes.
+--
+-- What to put in this file:
+-- 1. Compare assessment result keys, total/scored/missing counts and SUM(score), globally and per
+--    presentation.
+-- 2. Compare VLE daily-key coverage and SUM(sum_click) to Silver; also reconcile typed Bronze clicks
+--    through Silver to Gold.
+-- 3. Compare outcomes-view enrollment keys and final_result counts with student_info_clean; expect
+--    32,593 enrollments.
+-- 4. Include students with no activity and confirm separate fact aggregations do not multiply
+--    enrollment rows.
+-- 5. Report source_value, target_value and difference for every measure.
+--
+-- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
+--    result alone is not an automated test.
+--
+-- Done when: No unexplained differences; fact counts are 173,912 and 8,459,320 for the current batch.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

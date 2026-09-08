@@ -1,0 +1,18 @@
+# File: silver_sources.yml
+# Purpose: Register existing Silver tables so Gold models can read them with source().
+# Status: Source definitions still need implementation; [] is an empty YAML list.
+#
+# What the assigned member should put here:
+# 1. Replace sources: [] with a source named oulad_silver.
+# 2. Set database/catalog mapping to open_university and schema to oulad_silver,
+#    using the chosen dbt-databricks adapter's source properties.
+# 3. Declare assessment_clean, courses_clean, student_assessment_clean,
+#    student_info_clean, student_registration_clean, student_vle_clean and vle_clean.
+# 4. Add descriptions, business-key columns, audit columns and relevant source tests.
+# 5. Match identifiers to the actual Silver table names; source() registers inputs,
+#    it does not create or ingest these tables.
+#
+# Models will use source('oulad_silver', 'courses_clean'), for example.
+# Done when: all seven validated Silver tables resolve under their declared names.
+version: 2
+sources: []

@@ -1,5 +1,17 @@
+# File: reporting.yml
+# Purpose: Document and test the enrollment-level vw_student_outcomes view.
+# Status: Add the model entry once the reporting SQL is implemented.
+#
+# What the assigned member should put here:
+# 1. Replace models: [] with an entry named vw_student_outcomes.
+# 2. Describe the grain: one code_module + code_presentation + id_student enrollment.
+# 3. Document outcome, registration timing, attempts, credits and aggregated activity.
+# 4. Add full-enrollment-key uniqueness/not_null tests and accepted final_result values.
+# 5. Document dropout as final_result = 'Withdrawn', NULL unknown dates/average scores,
+#    and zero counts/clicks for enrollments with no recorded activity.
+# 6. Reconcile enrollment counts to Silver and verify zero-activity students remain.
+#
+# Done when: 32,593 current-batch enrollments remain, no joined measures multiply,
+# and tests reflect the implemented view and its actual field names.
 version: 2
-
-models:
-  # TODO: Add documentation and tests for:
-  # - vw_student_outcomes
+models: []

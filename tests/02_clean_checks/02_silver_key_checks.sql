@@ -1,5 +1,21 @@
--- File: 01_bronze_row_count_checks.sql
--- Purpose: Compare source-file row counts with Bronze table row counts.
--- Expected result: Source and Bronze counts should match.
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: 02_silver_key_checks.sql
+-- Purpose: Find missing or repeated Silver business keys.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: All seven Silver tables.
+-- Output: Read-only validation queries with failure counts/details and stated expected results; no data
+--    changes.
+--
+-- What to put in this file:
+-- 1. Check assessment by id_assessment; courses by code_module + code_presentation.
+-- 2. Check student_assessment by id_assessment + id_student; student_info and registration by
+--    code_module + code_presentation + id_student.
+-- 3. Check vle by code_module + code_presentation + id_site; student_vle by those codes plus id_student
+--    + id_site + date.
+-- 4. Test each key component for NULL/blank separately, then GROUP BY the full key and HAVING COUNT(*)
+--    > 1.
+--
+-- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
+--    result alone is not an automated test.
+--
+-- Done when: No missing required key components and no repeated full business keys.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

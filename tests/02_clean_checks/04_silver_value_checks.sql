@@ -1,5 +1,21 @@
--- File: 01_bronze_row_count_checks.sql
--- Purpose: Compare source-file row counts with Bronze table row counts.
--- Expected result: Source and Bronze counts should match.
--- Status: TODO - implementation pending
--- Owner: Unassigned
+-- File: 04_silver_value_checks.sql
+-- Purpose: Find invalid types, unconverted placeholders and out-of-range values.
+-- Status: Implementation pending. Replace this guide with the finished code.
+-- Input: All seven Silver tables and column metadata.
+-- Output: Read-only validation queries with failure counts/details and stated expected results; no data
+--    changes.
+--
+-- What to put in this file:
+-- 1. Check data types through metadata and confirm source placeholders (?, blank, NA, N/A, NULL text)
+--    were normalized.
+-- 2. Check scores and weights within 0..100 when present, is_banked in (0,1), positive presentation
+--    lengths and nonnegative clicks/attempts/credits.
+-- 3. Check agreed categories such as CMA/TMA/Exam and Distinction/Fail/Pass/Withdrawn.
+-- 4. Check week_from <= week_to only when both exist; keep NULL optional weeks and valid negative
+--    relative dates.
+--
+-- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
+--    result alone is not an automated test.
+--
+-- Done when: No unexpected placeholders, invalid categories/types or documented range violations.
+-- Read: docs/pipeline_plan.md and docs/assumptions.md.

@@ -1,6 +1,6 @@
 -- Suggested branch: feature/bronze-ingestion
 
-CREATE TABLE IF NOT EXISTS open_university.oulad_bronze.student_assesments_raw
+CREATE TABLE IF NOT EXISTS open_university.oulad_bronze.student_assessment_raw
 USING DELTA
 AS 
 SELECT *, 

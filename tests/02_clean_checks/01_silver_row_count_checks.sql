@@ -22,3 +22,72 @@
 --
 -- Done when: All differences are explained by the documented transformation, with no unexpected loss.
 -- Read: docs/pipeline_plan.md and docs/assumptions.md.
+
+-- ============================================================
+-- File: 01_silver_row_count_checks.sql
+-- Branch: feature/clean-assessments
+--
+-- Purpose:
+-- Validate Bronze-to-Silver row counts for the assessment
+-- transformations.
+--
+-- Expected current-batch counts:
+--   assessment_clean          = 206
+--   student_assessment_clean  = 173,912
+--
+-- This is a read-only validation check.
+-- ============================================================
+
+
+WITH row_counts AS (
+
+    -- Assessment
+    SELECT
+        'assessment_clean' AS table_name,
+        (
+            SELECT COUNT(*)
+            FROM open_university.oulad_bronze.assessment_raw
+        ) AS bronze_count,
+        (
+            SELECT COUNT(*)
+            FROM open_university.oulad_silver.assessment_clean
+        ) AS silver_count,
+        206 AS expected_count
+
+    UNION ALL
+
+    -- Student Assessment
+    SELECT
+        'student_assessment_clean' AS table_name,
+        (
+            SELECT COUNT(*)
+            FROM open_university.oulad_bronze.student_assessment_raw
+        ) AS bronze_count,
+        (
+            SELECT COUNT(*)
+            FROM open_university.oulad_silver.student_assessment_clean
+        ) AS silver_count,
+        173912 AS expected_count
+)
+
+SELECT
+    table_name,
+    bronze_count,
+    silver_count,
+    expected_count,
+    silver_count - bronze_count AS difference,
+
+    CASE
+        WHEN silver_count = expected_count
+             AND silver_count = bronze_count
+        THEN 'PASS'
+
+        WHEN silver_count = expected_count
+             AND silver_count <> bronze_count
+        THEN 'REVIEW - documented transformation difference'
+
+        ELSE 'FAIL'
+    END AS status
+
+FROM row_counts
+ORDER BY table_name;

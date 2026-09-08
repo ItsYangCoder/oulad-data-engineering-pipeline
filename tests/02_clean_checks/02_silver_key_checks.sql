@@ -21,3 +21,63 @@
 --
 -- Done when: No missing required key components and no repeated full business keys.
 -- Read: docs/pipeline_plan.md and docs/assumptions.md.
+
+-- ============================================================
+-- 1. assessment_clean
+-- Business key: id_assessment
+-- Expected:
+-- - No NULL id_assessment
+-- - No duplicate id_assessment
+-- ============================================================
+
+-- Check for NULL assessment keys
+SELECT
+    COUNT(*) AS null_id_assessment_count
+FROM open_university.oulad_silver.assessment_clean
+WHERE id_assessment IS NULL;
+
+
+-- Check for duplicate assessment keys
+SELECT
+    id_assessment,
+    COUNT(*) AS row_count
+FROM open_university.oulad_silver.assessment_clean
+GROUP BY id_assessment
+HAVING COUNT(*) > 1
+ORDER BY row_count DESC;
+
+
+-- ============================================================
+-- 2. student_assessment_clean
+-- Business key: id_assessment + id_student
+-- Expected:
+-- - No NULL id_assessment
+-- - No NULL id_student
+-- - No duplicate composite key
+-- ============================================================
+
+-- Check for NULL id_assessment
+SELECT
+    COUNT(*) AS null_id_assessment_count
+FROM open_university.oulad_silver.student_assessment_clean
+WHERE id_assessment IS NULL;
+
+
+-- Check for NULL id_student
+SELECT
+    COUNT(*) AS null_id_student_count
+FROM open_university.oulad_silver.student_assessment_clean
+WHERE id_student IS NULL;
+
+
+-- Check for duplicate composite keys
+SELECT
+    id_assessment,
+    id_student,
+    COUNT(*) AS row_count
+FROM open_university.oulad_silver.student_assessment_clean
+GROUP BY
+    id_assessment,
+    id_student
+HAVING COUNT(*) > 1
+ORDER BY row_count DESC;

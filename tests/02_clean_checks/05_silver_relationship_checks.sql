@@ -22,3 +22,67 @@
 --
 -- Done when: Zero unexplained orphan rows using complete composite joins.
 -- Read: docs/pipeline_plan.md and docs/assumptions.md.
+
+-- ============================================================
+-- 1. student_assessment_clean -> assessment_clean
+-- Relationship:
+-- student_assessment_clean.id_assessment
+-- must exist in assessment_clean.id_assessment
+--
+-- Expected: 0 orphan rows
+-- ============================================================
+
+SELECT
+    COUNT(*) AS orphan_count
+FROM open_university.oulad_silver.student_assessment_clean sa
+LEFT JOIN open_university.oulad_silver.assessment_clean a
+    ON sa.id_assessment = a.id_assessment
+WHERE a.id_assessment IS NULL;
+
+
+-- Show orphan assessment keys if any exist
+-- Expected: No rows returned
+
+SELECT DISTINCT
+    sa.id_assessment
+FROM open_university.oulad_silver.student_assessment_clean sa
+LEFT JOIN open_university.oulad_silver.assessment_clean a
+    ON sa.id_assessment = a.id_assessment
+WHERE a.id_assessment IS NULL
+ORDER BY sa.id_assessment;
+
+
+-- ============================================================
+-- 2. assessment_clean -> courses_clean
+-- Relationship:
+-- assessment_clean.code_module + code_presentation
+-- must exist in courses_clean
+--
+-- Expected: 0 orphan rows
+-- ============================================================
+
+SELECT
+    COUNT(*) AS orphan_count
+FROM open_university.oulad_silver.assessment_clean a
+LEFT JOIN open_university.oulad_silver.courses_clean c
+    ON a.code_module = c.code_module
+   AND a.code_presentation = c.code_presentation
+WHERE c.code_module IS NULL
+   OR c.code_presentation IS NULL;
+
+
+-- Show orphan course keys if any exist
+-- Expected: No rows returned
+
+SELECT DISTINCT
+    a.code_module,
+    a.code_presentation
+FROM open_university.oulad_silver.assessment_clean a
+LEFT JOIN open_university.oulad_silver.courses_clean c
+    ON a.code_module = c.code_module
+   AND a.code_presentation = c.code_presentation
+WHERE c.code_module IS NULL
+   OR c.code_presentation IS NULL
+ORDER BY
+    a.code_module,
+    a.code_presentation;

@@ -1,0 +1,7 @@
+-- File: assessment_clean.sql
+-- Layer: Silver / Clean
+-- Purpose: Clean, cast, deduplicate, and validate assessment records.
+-- Source: <catalog>.oulad_bronze.assessment_raw
+-- Target: <catalog>.oulad_silver.assessment_clean
+-- Status: TODO - implementation pending
+-- Owner: Unassigned

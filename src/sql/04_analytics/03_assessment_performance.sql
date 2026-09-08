@@ -1,0 +1,6 @@
+-- File: 01_cohort_analysis.sql
+-- Purpose: Analyze student outcomes by module presentation and cohort.
+-- Sources: OULAD Gold dimension and fact models
+-- Output: Query intended for Metabase visualization
+-- Status: TODO - implementation pending
+-- Owner: Unassigned

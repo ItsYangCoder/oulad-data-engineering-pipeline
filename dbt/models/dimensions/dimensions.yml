@@ -1,0 +1,10 @@
+version: 2
+
+models:
+  # TODO: Add dimension model documentation and tests.
+  # Planned models:
+  # - dim_student
+  # - dim_course
+  # - dim_module_presentation
+  # - dim_date
+  # - dim_demographics

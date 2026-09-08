@@ -1,0 +1,5 @@
+-- File: 01_bronze_row_count_checks.sql
+-- Purpose: Compare source-file row counts with Bronze table row counts.
+-- Expected result: Source and Bronze counts should match.
+-- Status: TODO - implementation pending
+-- Owner: Unassigned

@@ -1,0 +1,7 @@
+version: 2
+
+models:
+  # TODO: Add fact model documentation and tests.
+  # Planned models:
+  # - fact_assessments
+  # - fact_vle_interactions

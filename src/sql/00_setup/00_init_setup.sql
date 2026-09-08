@@ -12,7 +12,7 @@ CREATE SCHEMA IF NOT EXISTS oulad_silver;
 CREATE SCHEMA IF NOT EXISTS oulad_gold;
 
 -- Data-quality results and invalid records.
-CREATE SCHEMA IF NOT EXISTS ioulad_quality;
+CREATE SCHEMA IF NOT EXISTS oulad_quality;
 
 
 -- Check that the project schemas are available.

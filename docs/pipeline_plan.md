@@ -695,19 +695,22 @@ implement and completion criteria. Assigned members should replace the guide
 with code, retaining useful purpose/grain comments. Baseline counts describe
 the current source delivery and must be reviewed for a new batch.
 
-### Source-name checks before Silver implementation
+### Source-name validation
 
-The committed Raw loader for student assessments currently targets
-`student_assesments_raw`, while the documented table name and most source
-tests use `student_assessment_raw`. The Bronze row-count check also references
-`assessments_raw` and `student_reg_raw`, while the corresponding loaders use
-`assessment_raw` and `student_registration_raw`.
+The seven live Bronze tables and their committed SQL references have been
+verified and aligned:
 
-The ingestion/check owner must confirm the actual Databricks tables and align
-these identifiers before the team runs from a fresh environment. Do not create
-empty substitute tables or treat a previously recorded validation result as
-proof that the committed names match. This guidance update does not execute or
-rename any Databricks table.
+- `assessment_raw`
+- `courses_raw`
+- `student_assessment_raw`
+- `student_info_raw`
+- `student_registration_raw`
+- `student_vle_raw`
+- `vle_raw`
+
+All seven Bronze row counts reconcile with the current source delivery. Bronze
+data was preserved; no substitute tables were created and no reload was
+required.
 
 ---
 

@@ -1,6 +1,7 @@
 {{ config(enabled=false) }}
 
 -- File: vle_click_reconciliation.sql
+-- Suggested branch: feature/build-vle-mart
 -- Purpose: Prove the VLE fact preserves Silver click totals and daily keys.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: source('oulad_silver', 'student_vle_clean') and ref('fact_vle_interactions').

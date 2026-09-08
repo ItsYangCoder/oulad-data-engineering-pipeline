@@ -1,4 +1,5 @@
 -- File: 03_assessment_checks.sql
+-- Suggested branch: feature/assessment-analysis
 -- Purpose: Validate reported score statistics and denominators.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: 03_assessment_performance.sql output and Gold fact_assessments.

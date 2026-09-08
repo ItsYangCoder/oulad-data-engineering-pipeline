@@ -1,4 +1,5 @@
 -- File: 04_engagement_checks.sql
+-- Suggested branch: feature/vle-engagement
 -- Purpose: Validate click totals, active-student counts and zero-activity coverage.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: 04_vle_engagement.sql output, Gold fact_vle_interactions and vw_student_outcomes.

@@ -1,4 +1,6 @@
 -- File: 03_silver_null_checks.sql
+-- Suggested branch: feature/add-silver-checks
+-- For checks tied to one transformation, use that transformation's branch instead.
 -- Purpose: Separate valid missing optional values from unexpected missing data.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: All Silver tables, plus the documented source missing-value results.

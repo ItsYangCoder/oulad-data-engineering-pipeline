@@ -1,3 +1,5 @@
+-- Suggested branch: feature/bronze-ingestion
+
 -- Initial load: creates and loads the table only if it does not exist.
 
 CREATE TABLE IF NOT EXISTS

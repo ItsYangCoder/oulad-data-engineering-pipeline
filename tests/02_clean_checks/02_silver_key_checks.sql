@@ -1,4 +1,6 @@
 -- File: 02_silver_key_checks.sql
+-- Suggested branch: feature/add-silver-checks
+-- For checks tied to one transformation, use that transformation's branch instead.
 -- Purpose: Find missing or repeated Silver business keys.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: All seven Silver tables.

@@ -1,5 +1,7 @@
 # OULAD star-schema image instructions
 
+**Suggested branch:** `docs/create-star-schema`
+
 Purpose: Explain what the assigned diagram author should draw and save in this folder.
 
 Status: The diagram has not been created. This Markdown file is an instruction note, not an image.

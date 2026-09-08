@@ -1,4 +1,5 @@
 -- File: 03_assessment_performance.sql
+-- Suggested branch: feature/assessment-analysis
 -- Purpose: Summarize scores, scoring coverage and submission patterns.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: open_university.oulad_gold.fact_assessments with relevant dimensions; vw_student_outcomes for

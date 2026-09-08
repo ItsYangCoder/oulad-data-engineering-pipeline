@@ -1,4 +1,5 @@
 -- File: 02_dropout_analysis.sql
+-- Suggested branch: feature/dropout-analysis
 -- Purpose: Measure withdrawal rates and known withdrawal timing.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: open_university.oulad_gold.vw_student_outcomes and relevant dimensions.

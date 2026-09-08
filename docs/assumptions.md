@@ -1,5 +1,7 @@
 # Project Assumptions
 
+**Suggested branch:** `docs/update-assumptions`
+
 This document records the agreed transformation and business rules for
 the OULAD data engineering pipeline.
 

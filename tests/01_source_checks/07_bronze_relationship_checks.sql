@@ -1,3 +1,6 @@
+-- Suggested branch: test/bronze-checks
+-- For checks tied to one transformation, use that transformation's branch instead.
+
 -- Checks whether child records have matching parent records.
 
 SELECT

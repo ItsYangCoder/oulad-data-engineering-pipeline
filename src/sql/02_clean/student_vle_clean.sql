@@ -1,4 +1,5 @@
 -- File: student_vle_clean.sql
+-- Suggested branch: feature/clean-vle
 -- Purpose: Combine repeated daily VLE keys while preserving total recorded clicks.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: open_university.oulad_bronze.student_vle_raw

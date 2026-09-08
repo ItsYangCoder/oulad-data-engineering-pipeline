@@ -1,4 +1,5 @@
 # File: deploy.yml
+# Suggested branch: ci/add-databricks-deployment
 # Purpose: Publish a validated project revision to the agreed Databricks target.
 # Status: Implementation guide. Manual trigger only; the job is deliberately skipped.
 #

@@ -1,6 +1,7 @@
 {{ config(enabled=false) }}
 
 -- File: dim_date.sql
+-- Suggested branch: feature/build-dimensions
 -- Purpose: Provide a shared relative-day lookup for submission, interaction and registration timing.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: Silver assessment_clean.date, student_assessment_clean.date_submitted, student_vle_clean.date,

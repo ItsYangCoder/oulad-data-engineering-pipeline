@@ -1,6 +1,7 @@
 {{ config(enabled=false) }}
 
 -- File: fact_assessments.sql
+-- Suggested branch: feature/build-assessment-mart
 -- Purpose: Store student assessment results with reporting keys and assessment context.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: Silver student_assessment_clean, assessment_clean and student_info_clean; the five required

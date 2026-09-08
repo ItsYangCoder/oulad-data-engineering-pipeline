@@ -1,3 +1,5 @@
+-- Suggested branch: feature/bronze-ingestion
+
 CREATE TABLE IF NOT EXISTS open_university.oulad_bronze.vle_raw
 USING DELTA
 AS 

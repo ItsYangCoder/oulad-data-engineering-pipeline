@@ -1,4 +1,6 @@
 -- File: 01_silver_row_count_checks.sql
+-- Suggested branch: feature/add-silver-checks
+-- For checks tied to one transformation, use that transformation's branch instead.
 -- Purpose: Explain every Bronze-to-Silver row-count difference.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: All seven Bronze and matching Silver tables.

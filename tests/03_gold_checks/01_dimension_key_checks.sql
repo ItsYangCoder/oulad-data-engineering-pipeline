@@ -1,4 +1,6 @@
 -- File: 01_dimension_key_checks.sql
+-- Suggested branch: feature/add-gold-checks
+-- For checks tied to one transformation, use that transformation's branch instead.
 -- Purpose: Validate each of the five required dimensions at its own grain.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: Gold dim_student, dim_course, dim_module_presentation, dim_date and dim_demographics.

@@ -1,4 +1,6 @@
 -- File: 04_silver_value_checks.sql
+-- Suggested branch: feature/add-silver-checks
+-- For checks tied to one transformation, use that transformation's branch instead.
 -- Purpose: Find invalid types, unconverted placeholders and out-of-range values.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: All seven Silver tables and column metadata.

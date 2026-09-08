@@ -1,4 +1,6 @@
 -- File: 05_silver_relationship_checks.sql
+-- Suggested branch: feature/add-silver-checks
+-- For checks tied to one transformation, use that transformation's branch instead.
 -- Purpose: Find Silver child rows without their required parent.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: All seven Silver tables.

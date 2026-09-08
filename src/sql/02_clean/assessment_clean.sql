@@ -1,4 +1,5 @@
 -- File: assessment_clean.sql
+-- Suggested branch: feature/clean-assessments
 -- Purpose: Prepare assessment definitions and deadlines for the assessment fact.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: open_university.oulad_bronze.assessment_raw

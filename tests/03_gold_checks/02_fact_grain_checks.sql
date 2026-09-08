@@ -1,4 +1,6 @@
 -- File: 02_fact_grain_checks.sql
+-- Suggested branch: feature/add-gold-checks
+-- For checks tied to one transformation, use that transformation's branch instead.
 -- Purpose: Detect duplicated or missing fact business keys after dimension joins.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: Gold fact_assessments and fact_vle_interactions.

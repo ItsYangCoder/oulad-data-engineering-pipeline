@@ -1,4 +1,5 @@
 # File: dimensions.yml
+# Suggested branch: feature/build-dimensions
 # Purpose: Document the five dimension models and attach reusable dbt data tests.
 # Status: Add definitions as each dimension is implemented; [] is an empty list.
 #

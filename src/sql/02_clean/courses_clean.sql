@@ -1,4 +1,5 @@
 -- File: courses_clean.sql
+-- Suggested branch: feature/clean-courses
 -- Purpose: Prepare the list of module presentations used by other Silver tables and Gold course
 --    dimensions.
 -- Status: Implementation pending. Replace this guide with the finished code.

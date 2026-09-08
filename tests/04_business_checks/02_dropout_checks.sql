@@ -1,4 +1,5 @@
 -- File: 02_dropout_checks.sql
+-- Suggested branch: feature/dropout-analysis
 -- Purpose: Validate the dropout rule, denominator and missing timing handling.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: 02_dropout_analysis.sql output and Gold vw_student_outcomes.

@@ -1,4 +1,6 @@
 -- File: 03_fact_relationship_checks.sql
+-- Suggested branch: feature/add-gold-checks
+-- For checks tied to one transformation, use that transformation's branch instead.
 -- Purpose: Find unresolved fact dimension references and mismatched presentation context.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: Both Gold facts and the five required dimensions.

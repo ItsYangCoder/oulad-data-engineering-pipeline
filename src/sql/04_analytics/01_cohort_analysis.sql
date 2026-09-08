@@ -1,4 +1,5 @@
 -- File: 01_cohort_analysis.sql
+-- Suggested branch: feature/cohort-analysis
 -- Purpose: Compare enrollment outcomes across module-presentation cohorts.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: open_university.oulad_gold.vw_student_outcomes and relevant dimensions.

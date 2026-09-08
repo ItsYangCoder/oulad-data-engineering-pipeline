@@ -1,6 +1,7 @@
 {{ config(enabled=false) }}
 
 -- File: dim_demographics.sql
+-- Suggested branch: feature/build-dimensions
 -- Purpose: Store reusable combinations of enrollment demographic attributes.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: Silver student_info_clean.

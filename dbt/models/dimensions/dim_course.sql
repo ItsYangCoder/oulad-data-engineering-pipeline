@@ -1,6 +1,7 @@
 {{ config(enabled=false) }}
 
 -- File: dim_course.sql
+-- Suggested branch: feature/build-dimensions
 -- Purpose: Identify each module once for course-level reporting.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: Silver courses_clean.

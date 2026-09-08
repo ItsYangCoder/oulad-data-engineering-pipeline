@@ -1,6 +1,7 @@
 {{ config(enabled=false) }}
 
 -- File: fact_vle_interactions.sql
+-- Suggested branch: feature/build-vle-mart
 -- Purpose: Store daily resource engagement with reporting keys and unchanged click totals.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: Silver student_vle_clean, vle_clean and student_info_clean; the five required dimensions via

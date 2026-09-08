@@ -1,4 +1,5 @@
 -- File: 01_cohort_checks.sql
+-- Suggested branch: feature/cohort-analysis
 -- Purpose: Validate cohort report populations and outcome percentages.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: 01_cohort_analysis.sql output, Gold vw_student_outcomes and Silver student_info_clean.

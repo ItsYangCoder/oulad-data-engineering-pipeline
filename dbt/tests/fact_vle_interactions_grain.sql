@@ -1,6 +1,7 @@
 {{ config(enabled=false) }}
 
 -- File: fact_vle_interactions_grain.sql
+-- Suggested branch: feature/build-vle-mart
 -- Purpose: Reject repeated or incomplete daily interaction keys.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: ref('fact_vle_interactions').

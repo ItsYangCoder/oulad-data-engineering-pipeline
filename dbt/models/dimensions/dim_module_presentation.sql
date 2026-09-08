@@ -1,6 +1,7 @@
 {{ config(enabled=false) }}
 
 -- File: dim_module_presentation.sql
+-- Suggested branch: feature/build-dimensions
 -- Purpose: Describe a particular delivery of a module.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: Silver courses_clean and ref('dim_course').

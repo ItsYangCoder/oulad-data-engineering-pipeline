@@ -1,4 +1,5 @@
 # File: silver_sources.yml
+# Suggested branch: chore/setup-dbt
 # Purpose: Register existing Silver tables so Gold models can read them with source().
 # Status: Source definitions still need implementation; [] is an empty YAML list.
 #

@@ -1,3 +1,6 @@
+-- Suggested branch: test/bronze-checks
+-- For checks tied to one transformation, use that transformation's branch instead.
+
 -- Checks missing and duplicate candidate keys in every Bronze table.
 
 WITH key_checks AS (

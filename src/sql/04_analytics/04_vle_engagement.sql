@@ -1,4 +1,5 @@
 -- File: 04_vle_engagement.sql
+-- Suggested branch: feature/vle-engagement
 -- Purpose: Summarize recorded clicks and participation across resource types and relative time.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: open_university.oulad_gold.fact_vle_interactions, dim_date and other relevant dimensions;

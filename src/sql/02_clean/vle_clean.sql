@@ -1,4 +1,5 @@
 -- File: vle_clean.sql
+-- Suggested branch: feature/clean-vle
 -- Purpose: Prepare VLE resource descriptions and optional availability weeks.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: open_university.oulad_bronze.vle_raw

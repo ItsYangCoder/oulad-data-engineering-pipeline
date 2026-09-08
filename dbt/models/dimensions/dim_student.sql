@@ -1,6 +1,7 @@
 {{ config(enabled=false) }}
 
 -- File: dim_student.sql
+-- Suggested branch: feature/build-dimensions
 -- Purpose: Identify each student once across all their module enrollments.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: Silver student_info_clean, via source('oulad_silver', 'student_info_clean').

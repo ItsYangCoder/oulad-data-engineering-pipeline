@@ -1,4 +1,6 @@
 -- File: 04_gold_reconciliation_checks.sql
+-- Suggested branch: feature/add-gold-checks
+-- For checks tied to one transformation, use that transformation's branch instead.
 -- Purpose: Prove Gold models preserve Silver populations and measures.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: Both Gold facts, vw_student_outcomes and corresponding Silver tables.

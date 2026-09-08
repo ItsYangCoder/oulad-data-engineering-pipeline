@@ -1,4 +1,6 @@
 -- File: 06_silver_reconciliation_checks.sql
+-- Suggested branch: feature/add-silver-checks
+-- For checks tied to one transformation, use that transformation's branch instead.
 -- Purpose: Prove cleaning preserves the required records, scores and clicks.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: Bronze and Silver assessment, enrollment, registration and VLE data.

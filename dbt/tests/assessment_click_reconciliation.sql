@@ -1,6 +1,7 @@
 {{ config(enabled=false) }}
 
 -- File: assessment_click_reconciliation.sql
+-- Suggested branch: feature/build-assessment-mart
 -- Purpose: Reconcile assessment results and scores from Silver to Gold.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: source('oulad_silver', 'student_assessment_clean'), assessment_clean for context, and

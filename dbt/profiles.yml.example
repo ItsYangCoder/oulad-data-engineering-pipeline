@@ -1,4 +1,5 @@
 # File: profiles.yml.example
+# Suggested branch: chore/setup-dbt
 # Purpose: Show the connection settings a member must supply to run dbt on Databricks.
 # Status: Example only; it contains no working credentials.
 #

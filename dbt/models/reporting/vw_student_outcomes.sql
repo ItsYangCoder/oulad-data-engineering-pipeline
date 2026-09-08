@@ -1,6 +1,7 @@
 {{ config(enabled=false) }}
 
 -- File: vw_student_outcomes.sql
+-- Suggested branch: feature/build-student-outcomes
 -- Purpose: Give cohort and dropout reports one row per enrollment, including students without recorded
 --    activity.
 -- Status: Implementation pending. Replace this guide with the finished code.

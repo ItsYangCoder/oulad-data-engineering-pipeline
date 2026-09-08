@@ -1,4 +1,5 @@
 -- File: student_info_clean.sql
+-- Suggested branch: feature/clean-students
 -- Purpose: Prepare the complete enrollment population, demographics and final outcomes.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: open_university.oulad_bronze.student_info_raw

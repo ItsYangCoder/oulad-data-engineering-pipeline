@@ -1,4 +1,5 @@
 # File: reporting.yml
+# Suggested branch: feature/build-student-outcomes
 # Purpose: Document and test the enrollment-level vw_student_outcomes view.
 # Status: Add the model entry once the reporting SQL is implemented.
 #

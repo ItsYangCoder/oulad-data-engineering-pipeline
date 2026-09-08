@@ -1,4 +1,5 @@
 # File: dbt_project.yml
+# Suggested branch: chore/setup-dbt
 # Purpose: Tell dbt where this OULAD project keeps models, tests and macros.
 # Status: Starter configuration; connections and transformations still need implementation.
 #

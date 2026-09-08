@@ -1,5 +1,7 @@
 # OULAD Data Engineering Pipeline Plan
 
+**Suggested branch:** `docs/update-pipeline-plan`
+
 ## 1. Project Purpose
 
 This document defines how the Open University Learning Analytics Dataset (OULAD) will be processed from Raw to Clean to Mart.
@@ -724,15 +726,48 @@ Each group member must:
 9. Open a pull request into `main`.
 10. Request review before merging.
 
-Suggested branch names:
+### Choosing a branch for an assigned task
 
-* `feature/clean-assessments`
-* `feature/clean-students`
-* `feature/clean-vle`
-* `feature/build-assessment-mart`
-* `feature/build-vle-mart`
-* `feature/add-quality-tests`
-* `docs/update-project-documentation`
+Every file now shows a **Suggested branch** near the top. For the source-inspection
+notebook, it is in the first Markdown cell. These are naming suggestions for future
+work; adding the labels does not create the branches.
+
+Use one branch for one task and keep its related SQL, YAML, tests and documentation
+together. Files with the same suggested name can be worked on in that task branch;
+you do not need to create another branch for each file.
+
+| Task | Suggested branch |
+| --- | --- |
+| Clean assessment definitions and student results | `feature/clean-assessments` |
+| Clean student information and registration | `feature/clean-students` |
+| Clean VLE resources and daily interactions | `feature/clean-vle` |
+| Build the five dimensions and their documentation | `feature/build-dimensions` |
+| Build the assessment fact and its dbt tests | `feature/build-assessment-mart` |
+| Build the VLE fact and its dbt tests | `feature/build-vle-mart` |
+| Build the enrollment reporting view | `feature/build-student-outcomes` |
+| Implement cohort analytics and its business checks | `feature/cohort-analysis` |
+
+The other files carry their corresponding names directly in their headers.
+For shared files such as `facts.yml`, update the relevant model entry on the same
+branch as that model. General quality-check files have a suggested branch for a
+standalone validation task; checks accompanying a transformation belong on that
+transformation's branch.
+
+Example: start an assessment-cleaning task from the latest `main`:
+
+```bash
+git switch main
+git pull --ff-only origin main
+git switch -c feature/clean-assessments
+```
+
+If that task branch already exists locally, switch to it instead of creating it
+again. If two members work independently in the same area, use distinct names,
+such as `feature/clean-assessments-rhea`, so their separate work does not share a
+remote branch accidentally.
+
+After implementing and validating the assigned work, commit it, push the task
+branch, and open a pull request into `main` following the steps above.
 
 Do not commit:
 

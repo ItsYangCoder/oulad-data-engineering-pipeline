@@ -1,3 +1,6 @@
+-- Suggested branch: test/bronze-checks
+-- For checks tied to one transformation, use that transformation's branch instead.
+
 -- 1. Missing assessment dates by assessment type
 SELECT
     assessment_type,

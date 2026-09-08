@@ -1,4 +1,5 @@
 -- File: student_assessment_clean.sql
+-- Suggested branch: feature/clean-assessments
 -- Purpose: Prepare each student's assessment result, submission day and banked-result flag.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: open_university.oulad_bronze.student_assessment_raw

@@ -1,6 +1,7 @@
 {{ config(enabled=false) }}
 
 -- File: fact_assessments_grain.sql
+-- Suggested branch: feature/build-assessment-mart
 -- Purpose: Reject repeated or incomplete student-assessment keys.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: ref('fact_assessments').

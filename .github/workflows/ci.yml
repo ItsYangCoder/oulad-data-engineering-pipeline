@@ -1,4 +1,5 @@
 # File: ci.yml
+# Suggested branch: ci/add-project-validation
 # Purpose: Validate proposed project changes before merging.
 # Status: Implementation guide. Manual trigger only; the job is deliberately skipped.
 #

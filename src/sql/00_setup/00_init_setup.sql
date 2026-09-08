@@ -1,3 +1,5 @@
+-- Suggested branch: chore/setup-databricks
+
 CREATE CATALOG IF NOT EXISTS open_university;
 
 USE CATALOG open_university;

@@ -1,4 +1,5 @@
 -- File: student_registration_clean.sql
+-- Suggested branch: feature/clean-students
 -- Purpose: Prepare registration and withdrawal timing without inventing missing dates.
 -- Status: Implementation pending. Replace this guide with the finished code.
 -- Input: open_university.oulad_bronze.student_registration_raw

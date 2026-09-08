@@ -1,4 +1,7 @@
 # File: facts.yml
+# Suggested branch: feature/build-assessment-mart
+# For VLE-only changes, use feature/build-vle-mart instead.
+# Update only the relevant model entry on the same branch as its SQL/tests.
 # Purpose: Document fact measures, grains and foreign keys, and attach dbt data tests.
 # Status: Add definitions when fact models and their dependencies are implemented.
 #

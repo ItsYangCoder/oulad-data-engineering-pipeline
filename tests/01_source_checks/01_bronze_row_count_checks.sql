@@ -1,3 +1,6 @@
+-- Suggested branch: test/bronze-checks
+-- For checks tied to one transformation, use that transformation's branch instead.
+
 -- Confirms that every Bronze table contains the expected source rows.
 
 SELECT

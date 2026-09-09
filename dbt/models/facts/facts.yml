@@ -1,21 +1,93 @@
-# File: facts.yml
-# Suggested branch: feature/build-assessment-mart
-# For VLE-only changes, use feature/build-vle-mart instead.
-# Update only the relevant model entry on the same branch as its SQL/tests.
-# Purpose: Document fact measures, grains and foreign keys, and attach dbt data tests.
-# Status: Add definitions when fact models and their dependencies are implemented.
-#
-# What the assigned member should put here:
-# 1. Replace models: [] with exactly fact_assessments and fact_vle_interactions.
-# 2. Describe assessment grain (id_assessment, id_student) and the full five-column
-#    VLE daily key (code_module, code_presentation, id_student, id_site, date).
-# 3. Document score, is_banked, assessment context, sum_click and audit fields.
-# 4. Add required-key not_null tests and relationships to the five dimensions;
-#    allow documented unknown optional dates and scores.
-# 5. Add score-range, banked-flag and nonnegative-click checks using the selected
-#    dbt version's syntax. Composite uniqueness/reconciliation lives in dbt/tests/.
-# 6. Do not add an enrollment fact; enrollment reporting uses vw_student_outcomes.
-#
-# Done when: tests match actual columns, catch violations, and pass on valid data.
 version: 2
-models: []
+
+models:
+  - name: fact_assessments
+    description: "Student assessment results at one row per (id_assessment, id_student)."
+    columns:
+      - name: id_assessment
+        description: "Assessment business-key component from assessment_clean."
+        tests:
+          - not_null
+      - name: id_student
+        description: "Student business-key component from student_assessment_clean."
+        tests:
+          - not_null
+      - name: code_module
+        description: "Module code from the assessment definition."
+        tests:
+          - not_null
+      - name: code_presentation
+        description: "Presentation code from the assessment definition."
+        tests:
+          - not_null
+      - name: student_key
+        description: "Foreign key to dim_student."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_student')
+              field: student_key
+      - name: course_key
+        description: "Foreign key to dim_course."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_course')
+              field: course_key
+      - name: presentation_key
+        description: "Foreign key to dim_module_presentation."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_module_presentation')
+              field: presentation_key
+      - name: date_key
+        description: "Foreign key to dim_date for the submission relative day; nullable when date_submitted is unknown."
+        tests:
+          - relationships:
+              to: ref('dim_date')
+              field: date_key
+      - name: demographics_key
+        description: "Foreign key to the enrollment-level demographic profile; nullable when no matching enrollment profile exists."
+        tests:
+          - relationships:
+              to: ref('dim_demographics')
+              field: demographics_key
+      - name: assessment_type
+        description: "Assessment type: Exam, TMA or CMA."
+        tests:
+          - not_null
+      - name: assessment_date
+        description: "Assessment deadline as the OULAD relative day; may be NULL for assessments without a supplied deadline."
+      - name: date_submitted
+        description: "Submission day as an OULAD relative day; nullable when the source is missing."
+      - name: weight
+        description: "Assessment weight."
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 100
+      - name: score
+        description: "Student assessment score; expected NULL values are retained."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 100
+                inclusive: true
+      - name: is_banked
+        description: "OULAD banked-result flag."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1]
+      - name: mart_load_timestamp
+        description: "Timestamp when the Gold fact was loaded."
+        tests:
+          - not_null
+      - name: mart_load_date
+        description: "Date when the Gold fact was loaded."
+        tests:
+          - not_null

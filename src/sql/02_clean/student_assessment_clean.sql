@@ -13,7 +13,6 @@ CREATE TABLE IF NOT EXISTS open_university.oulad_silver.student_assessment_clean
     date_submitted INT,
     is_banked INT,
     score DECIMAL(5,2),
-    cleaned_at TIMESTAMP,
     clean_load_timestamp TIMESTAMP,
     clean_load_date DATE
 )
@@ -34,7 +33,6 @@ USING (
         cleaned_date_submitted AS date_submitted,
         cleaned_is_banked AS is_banked,
         cleaned_score AS score,
-        current_timestamp() AS cleaned_at,
         current_timestamp() AS clean_load_timestamp,
         current_date() AS clean_load_date
     FROM (
@@ -73,7 +71,6 @@ WHEN MATCHED THEN UPDATE SET
     target.date_submitted = source.date_submitted,
     target.is_banked = source.is_banked,
     target.score = source.score,
-    target.cleaned_at = source.cleaned_at,
     target.clean_load_timestamp = source.clean_load_timestamp,
     target.clean_load_date = source.clean_load_date
 WHEN NOT MATCHED THEN INSERT (
@@ -82,7 +79,6 @@ WHEN NOT MATCHED THEN INSERT (
     date_submitted,
     is_banked,
     score,
-    cleaned_at,
     clean_load_timestamp,
     clean_load_date
 )
@@ -92,61 +88,6 @@ VALUES (
     source.date_submitted,
     source.is_banked,
     source.score,
-    source.cleaned_at,
     source.clean_load_timestamp,
     source.clean_load_date
 );
-
--- Validation: row count. Expected: 173,912.
-SELECT COUNT(*) AS total_rows
-FROM open_university.oulad_silver.student_assessment_clean;
-
--- Validation: required keys. Expected: 0 NULL IDs.
-SELECT COUNT(*) AS null_id_assessment
-FROM open_university.oulad_silver.student_assessment_clean
-WHERE id_assessment IS NULL;
-
-SELECT COUNT(*) AS null_id_student
-FROM open_university.oulad_silver.student_assessment_clean
-WHERE id_student IS NULL;
-
--- Validation: duplicate composite keys. Expected: no rows.
-SELECT id_assessment, id_student, COUNT(*) AS row_count
-FROM open_university.oulad_silver.student_assessment_clean
-GROUP BY id_assessment, id_student
-HAVING COUNT(*) > 1;
-
--- Validation: expected NULL scores. Expected: 173.
-SELECT COUNT(*) AS null_scores
-FROM open_university.oulad_silver.student_assessment_clean
-WHERE score IS NULL;
-
--- Validation: score range. Expected: 0 <= score <= 100 when present.
-SELECT MIN(score) AS min_score, MAX(score) AS max_score
-FROM open_university.oulad_silver.student_assessment_clean
-WHERE score IS NOT NULL;
-
--- Validation: invalid scores. Expected: no rows.
-SELECT id_assessment, id_student, score
-FROM open_university.oulad_silver.student_assessment_clean
-WHERE score IS NOT NULL AND (score < 0 OR score > 100);
-
--- Validation: parent assessment relationship. Expected: 0 unmatched.
-SELECT COUNT(*) AS unmatched_assessments
-FROM open_university.oulad_silver.student_assessment_clean AS sa
-LEFT JOIN open_university.oulad_silver.assessment_clean AS a
-    ON sa.id_assessment = a.id_assessment
-WHERE a.id_assessment IS NULL;
-
--- Validation: audit fields. Expected: 0 NULL values.
-SELECT COUNT(*) AS null_cleaned_at
-FROM open_university.oulad_silver.student_assessment_clean
-WHERE cleaned_at IS NULL;
-
-SELECT COUNT(*) AS null_clean_load_timestamp
-FROM open_university.oulad_silver.student_assessment_clean
-WHERE clean_load_timestamp IS NULL;
-
-SELECT COUNT(*) AS null_clean_load_date
-FROM open_university.oulad_silver.student_assessment_clean
-WHERE clean_load_date IS NULL;

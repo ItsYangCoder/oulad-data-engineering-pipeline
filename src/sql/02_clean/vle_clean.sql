@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS open_university.oulad_silver.vle_clean (
   activity_type STRING,
   week_from INT,
   week_to INT,
-  is_valid_week_range BOOLEAN,
-  is_valid_parent BOOLEAN,
+  is_valid_date_range BOOLEAN,
+  has_valid_business_keys BOOLEAN,
   clean_load_timestamp TIMESTAMP,
   clean_load_date DATE
 ) USING DELTA;
@@ -79,13 +79,12 @@ MERGE INTO open_university.oulad_silver.vle_clean AS target
 USING (
   SELECT code_module, code_presentation, id_site, activity_type, week_from, week_to,
          CASE WHEN week_from IS NOT NULL AND week_to IS NOT NULL AND week_from > week_to
-              THEN FALSE ELSE TRUE END AS is_valid_week_range,
-         CASE WHEN parent_code_module IS NOT NULL THEN TRUE ELSE FALSE END AS is_valid_parent,
+              THEN FALSE ELSE TRUE END AS is_valid_date_range,
+         TRUE AS has_valid_business_keys,
          CURRENT_TIMESTAMP() AS clean_load_timestamp,
          CURRENT_DATE() AS clean_load_date
   FROM (
     SELECT v.*,
-           c.code_module AS parent_code_module,
            ROW_NUMBER() OVER (
              PARTITION BY v.code_module, v.code_presentation, v.id_site
              ORDER BY
@@ -95,9 +94,6 @@ USING (
                v.activity_type, v.week_from, v.week_to
            ) AS row_number
     FROM vle_typed_current_batch v
-    LEFT JOIN open_university.oulad_silver.courses_clean c
-      ON v.code_module = c.code_module
-     AND v.code_presentation = c.code_presentation
     WHERE v.rejection_reason IS NULL
   ) ranked
   WHERE row_number = 1
@@ -109,16 +105,16 @@ WHEN MATCHED THEN UPDATE SET
   target.activity_type = source.activity_type,
   target.week_from = source.week_from,
   target.week_to = source.week_to,
-  target.is_valid_week_range = source.is_valid_week_range,
-  target.is_valid_parent = source.is_valid_parent,
+  target.is_valid_date_range = source.is_valid_date_range,
+  target.has_valid_business_keys = source.has_valid_business_keys,
   target.clean_load_timestamp = source.clean_load_timestamp,
   target.clean_load_date = source.clean_load_date
 WHEN NOT MATCHED THEN INSERT (
   code_module, code_presentation, id_site, activity_type, week_from, week_to,
-  is_valid_week_range, is_valid_parent, clean_load_timestamp, clean_load_date
+  is_valid_date_range, has_valid_business_keys, clean_load_timestamp, clean_load_date
 ) VALUES (
   source.code_module, source.code_presentation, source.id_site, source.activity_type,
-  source.week_from, source.week_to, source.is_valid_week_range, source.is_valid_parent,
+  source.week_from, source.week_to, source.is_valid_date_range, source.has_valid_business_keys,
   source.clean_load_timestamp, source.clean_load_date
 )
 WHEN NOT MATCHED BY SOURCE THEN DELETE;

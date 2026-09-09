@@ -404,3 +404,23 @@ INNER JOIN open_university.oulad_silver.student_info_clean AS si
 
 WHERE si.final_result = 'Fail'
   AND sr.date_unregistration IS NOT NULL;
+
+-- VLE optional NULLs and audit fields
+SELECT
+  COUNT(*) AS resources_with_both_weeks_missing,
+  CASE WHEN COUNT(*) = 5243 THEN 'PASS' ELSE 'REVIEW' END AS status
+FROM open_university.oulad_silver.vle_clean
+WHERE week_from IS NULL AND week_to IS NULL;
+
+SELECT 'vle_clean_required_nulls' AS check_name, COUNT(*) AS invalid_rows,
+       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
+FROM open_university.oulad_silver.vle_clean
+WHERE code_module IS NULL OR code_presentation IS NULL OR id_site IS NULL
+   OR clean_load_timestamp IS NULL OR clean_load_date IS NULL;
+
+SELECT 'student_vle_clean_required_nulls' AS check_name, COUNT(*) AS invalid_rows,
+       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
+FROM open_university.oulad_silver.student_vle_clean
+WHERE code_module IS NULL OR code_presentation IS NULL OR id_student IS NULL
+   OR id_site IS NULL OR date IS NULL OR sum_click IS NULL
+   OR clean_load_timestamp IS NULL OR clean_load_date IS NULL;

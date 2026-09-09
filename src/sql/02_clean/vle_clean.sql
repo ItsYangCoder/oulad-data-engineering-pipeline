@@ -1,30 +1,126 @@
--- File: vle_clean.sql
--- Suggested branch: feature/clean-vle
--- Purpose: Prepare VLE resource descriptions and optional availability weeks.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: open_university.oulad_bronze.vle_raw
--- Output: open_university.oulad_silver.vle_clean
--- Grain / business key: One resource per module presentation; (code_module, code_presentation,
---    id_site).
---
--- What to put in this file:
--- 1. Use named CTEs to trim text, convert ?, blank, NA, N/A and NULL text to SQL NULL, then TRY_CAST
---    numeric fields.
--- 2. Keep code_module, code_presentation, id_site, activity_type, week_from and week_to.
--- 3. Cast id_site to BIGINT and week fields to INT; standardize activity_type consistently.
--- 4. Preserve 5,243 rows with both availability weeks missing; NULL means the source does not specify
---    that period.
--- 5. Check week_from <= week_to when both exist; validate the complete resource key and
---    course/presentation parent.
--- 6. Keep resource attributes here for the VLE fact; the agreed Gold design has no separate
---    dim_vle_resource model.
--- 7. Keep source column names; add clean_load_timestamp and clean_load_date. Record any invalid
---    required values for review instead of silently losing rows.
--- 8. Create the Delta target once if needed. Make repeat loads use the complete business key; rerunning
---    the same input must not add duplicate business rows.
---
--- Validation belongs in tests/02_clean_checks/; these counts describe the current source batch.
---
--- Done when: 6,364 resources for the current batch; unique composite keys; expected NULL weeks
---    retained; related Silver checks pass.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+-- Silver VLE resources
+-- One row per (code_module, code_presentation, id_site).
+
+CREATE TABLE IF NOT EXISTS open_university.oulad_silver.vle_clean (
+  code_module STRING,
+  code_presentation STRING,
+  id_site BIGINT,
+  activity_type STRING,
+  week_from INT,
+  week_to INT,
+  is_valid_week_range BOOLEAN,
+  is_valid_parent BOOLEAN,
+  clean_load_timestamp TIMESTAMP,
+  clean_load_date DATE
+) USING DELTA;
+
+CREATE TABLE IF NOT EXISTS open_university.oulad_silver.vle_rejected (
+  code_module_raw STRING,
+  code_presentation_raw STRING,
+  id_site_raw STRING,
+  activity_type_raw STRING,
+  week_from_raw STRING,
+  week_to_raw STRING,
+  rejection_reason STRING,
+  clean_load_timestamp TIMESTAMP,
+  clean_load_date DATE
+) USING DELTA;
+
+CREATE OR REPLACE TEMP VIEW vle_typed_current_batch AS
+WITH normalized AS (
+  SELECT
+    CAST(code_module AS STRING) AS code_module_raw,
+    CAST(code_presentation AS STRING) AS code_presentation_raw,
+    CAST(id_site AS STRING) AS id_site_raw,
+    CAST(activity_type AS STRING) AS activity_type_raw,
+    CAST(week_from AS STRING) AS week_from_raw,
+    CAST(week_to AS STRING) AS week_to_raw,
+    CASE WHEN code_module IS NULL OR UPPER(TRIM(CAST(code_module AS STRING))) IN ('', '?', 'NA', 'N/A', 'NULL')
+      THEN NULL ELSE UPPER(TRIM(CAST(code_module AS STRING))) END AS code_module,
+    CASE WHEN code_presentation IS NULL OR UPPER(TRIM(CAST(code_presentation AS STRING))) IN ('', '?', 'NA', 'N/A', 'NULL')
+      THEN NULL ELSE UPPER(TRIM(CAST(code_presentation AS STRING))) END AS code_presentation,
+    CASE WHEN id_site IS NULL OR UPPER(TRIM(CAST(id_site AS STRING))) IN ('', '?', 'NA', 'N/A', 'NULL')
+      THEN NULL ELSE TRIM(CAST(id_site AS STRING)) END AS id_site_normalized,
+    CASE WHEN activity_type IS NULL OR UPPER(TRIM(CAST(activity_type AS STRING))) IN ('', '?', 'NA', 'N/A', 'NULL')
+      THEN NULL ELSE LOWER(TRIM(CAST(activity_type AS STRING))) END AS activity_type,
+    CASE WHEN week_from IS NULL OR UPPER(TRIM(CAST(week_from AS STRING))) IN ('', '?', 'NA', 'N/A', 'NULL')
+      THEN NULL ELSE TRIM(CAST(week_from AS STRING)) END AS week_from_normalized,
+    CASE WHEN week_to IS NULL OR UPPER(TRIM(CAST(week_to AS STRING))) IN ('', '?', 'NA', 'N/A', 'NULL')
+      THEN NULL ELSE TRIM(CAST(week_to AS STRING)) END AS week_to_normalized
+  FROM open_university.oulad_bronze.vle_raw
+),
+casted AS (
+  SELECT *,
+    TRY_CAST(id_site_normalized AS BIGINT) AS id_site,
+    TRY_CAST(week_from_normalized AS INT) AS week_from,
+    TRY_CAST(week_to_normalized AS INT) AS week_to
+  FROM normalized
+)
+SELECT *,
+  CASE
+    WHEN code_module IS NULL THEN 'MISSING_CODE_MODULE'
+    WHEN code_presentation IS NULL THEN 'MISSING_CODE_PRESENTATION'
+    WHEN id_site_normalized IS NULL THEN 'MISSING_ID_SITE'
+    WHEN id_site IS NULL THEN 'INVALID_ID_SITE'
+    WHEN week_from_normalized IS NOT NULL AND week_from IS NULL THEN 'INVALID_WEEK_FROM'
+    WHEN week_to_normalized IS NOT NULL AND week_to IS NULL THEN 'INVALID_WEEK_TO'
+    ELSE NULL
+  END AS rejection_reason
+FROM casted;
+
+INSERT OVERWRITE open_university.oulad_silver.vle_rejected
+SELECT code_module_raw, code_presentation_raw, id_site_raw, activity_type_raw,
+       week_from_raw, week_to_raw, rejection_reason,
+       CURRENT_TIMESTAMP(), CURRENT_DATE()
+FROM vle_typed_current_batch
+WHERE rejection_reason IS NOT NULL;
+
+MERGE INTO open_university.oulad_silver.vle_clean AS target
+USING (
+  SELECT code_module, code_presentation, id_site, activity_type, week_from, week_to,
+         CASE WHEN week_from IS NOT NULL AND week_to IS NOT NULL AND week_from > week_to
+              THEN FALSE ELSE TRUE END AS is_valid_week_range,
+         CASE WHEN parent_code_module IS NOT NULL THEN TRUE ELSE FALSE END AS is_valid_parent,
+         CURRENT_TIMESTAMP() AS clean_load_timestamp,
+         CURRENT_DATE() AS clean_load_date
+  FROM (
+    SELECT v.*,
+           c.code_module AS parent_code_module,
+           ROW_NUMBER() OVER (
+             PARTITION BY v.code_module, v.code_presentation, v.id_site
+             ORDER BY
+               CASE WHEN v.activity_type IS NOT NULL THEN 0 ELSE 1 END,
+               CASE WHEN v.week_from IS NOT NULL THEN 0 ELSE 1 END,
+               CASE WHEN v.week_to IS NOT NULL THEN 0 ELSE 1 END,
+               v.activity_type, v.week_from, v.week_to
+           ) AS row_number
+    FROM vle_typed_current_batch v
+    LEFT JOIN open_university.oulad_silver.courses_clean c
+      ON v.code_module = c.code_module
+     AND v.code_presentation = c.code_presentation
+    WHERE v.rejection_reason IS NULL
+  ) ranked
+  WHERE row_number = 1
+) AS source
+ON target.code_module = source.code_module
+AND target.code_presentation = source.code_presentation
+AND target.id_site = source.id_site
+WHEN MATCHED THEN UPDATE SET
+  target.activity_type = source.activity_type,
+  target.week_from = source.week_from,
+  target.week_to = source.week_to,
+  target.is_valid_week_range = source.is_valid_week_range,
+  target.is_valid_parent = source.is_valid_parent,
+  target.clean_load_timestamp = source.clean_load_timestamp,
+  target.clean_load_date = source.clean_load_date
+WHEN NOT MATCHED THEN INSERT (
+  code_module, code_presentation, id_site, activity_type, week_from, week_to,
+  is_valid_week_range, is_valid_parent, clean_load_timestamp, clean_load_date
+) VALUES (
+  source.code_module, source.code_presentation, source.id_site, source.activity_type,
+  source.week_from, source.week_to, source.is_valid_week_range, source.is_valid_parent,
+  source.clean_load_timestamp, source.clean_load_date
+)
+WHEN NOT MATCHED BY SOURCE THEN DELETE;
+
+DROP VIEW IF EXISTS vle_typed_current_batch;

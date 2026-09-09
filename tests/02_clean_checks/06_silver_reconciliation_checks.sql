@@ -351,3 +351,38 @@ CROSS JOIN score_reconciliation sr
 
 CROSS JOIN null_scores ns;
 
+-- VLE reconciliation
+WITH bronze AS (
+  SELECT
+    COUNT(*) AS source_rows,
+    SUM(TRY_CAST(sum_click AS BIGINT)) AS click_total
+  FROM open_university.oulad_bronze.student_vle_raw
+),
+silver AS (
+  SELECT
+    COUNT(*) AS daily_rows,
+    SUM(source_row_count) AS accounted_source_rows,
+    SUM(sum_click) AS click_total
+  FROM open_university.oulad_silver.student_vle_clean
+),
+resources AS (
+  SELECT COUNT(*) AS resource_rows
+  FROM open_university.oulad_silver.vle_clean
+)
+SELECT
+  resources.resource_rows,
+  bronze.source_rows AS bronze_interaction_rows,
+  silver.daily_rows AS silver_daily_rows,
+  silver.accounted_source_rows,
+  bronze.click_total AS bronze_click_total,
+  silver.click_total AS silver_click_total,
+  CASE
+    WHEN resources.resource_rows = 6364
+     AND silver.daily_rows = 8459320
+     AND bronze.source_rows = silver.accounted_source_rows
+     AND bronze.click_total = silver.click_total
+    THEN 'PASS' ELSE 'FAIL'
+  END AS vle_reconciliation_status
+FROM bronze
+CROSS JOIN silver
+CROSS JOIN resources;

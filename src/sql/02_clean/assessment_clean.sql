@@ -60,7 +60,7 @@ USING (
 
             CASE
                 WHEN date IS NULL
-                     OR UPPER(TRIM(date)) IN ('?', '', 'NA', 'N/A', 'NULL')
+                     OR UPPER(TRIM(CAST(date AS STRING))) IN ('?', '', 'NA', 'N/A', 'NULL')
                 THEN NULL
                 ELSE TRY_CAST(date AS INT)
             END AS cleaned_date,

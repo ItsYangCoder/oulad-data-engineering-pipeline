@@ -1,78 +1,7 @@
--- ========================================================================================================
--- File: courses_clean.sql
--- Branch: feature/clean-courses
---
--- Purpose:
---    Clean and prepare course module presentations for the Silver layer while preserving
---    source records that require data-quality review.
---
--- Input:
---    open_university.oulad_bronze.courses_raw
---
--- Output:
---    open_university.oulad_silver.courses_clean
---    open_university.oulad_silver.courses_invalid_key_quarantine
---
--- Grain / Business Key:
---    One row per module presentation;
---    (code_module, code_presentation)
---
--- Expected Clean Row Count:
---    22 rows for the current source delivery.
---
--- Data Quality Rules:
---    1. code_module and code_presentation are trimmed and standardized to uppercase.
---    2. Placeholder values (?, blank, NA, N/A, NULL) are converted to SQL NULL.
---    3. module_presentation_length is converted using TRY_CAST to INT.
---    4. module_presentation_length must be a positive integer.
---    5. Rows with invalid business keys are quarantined rather than silently dropped.
---    6. Exact duplicate rows for the same business key are collapsed into one clean row.
---    7. Conflicting values for the same business key are quarantined rather than arbitrarily
---       selecting a winning value.
---    8. Different module presentations are preserved; records are not collapsed by code_module alone.
---
--- Deduplication Rule:
---    Exact duplicates are safely collapsed because they contain the same business-key values
---    and the same module_presentation_length.
---
---    Conflicting duplicate business keys are not resolved by selecting the largest, smallest,
---    or otherwise arbitrary value. All conflicting records are sent to quarantine for review.
---
--- Invalid Key Rule:
---    Records where code_module or code_presentation is NULL after normalization are sent to
---    courses_invalid_key_quarantine.
---
--- Invalid Length Rule:
---    Invalid or missing module_presentation_length values are preserved in courses_clean and
---    flagged through is_valid_length for downstream validation. No source record is silently lost.
---
--- Idempotency:
---    The clean table uses MERGE on the complete business key.
---    The quarantine table uses a deterministic quarantine_id so rerunning the same source data
---    does not create duplicate quarantine records.
---
--- Runtime / Databricks Considerations:
---    1. COUNT(DISTINCT ...) OVER (...) is not supported by Databricks/Spark SQL.
---       COLLECT_SET(...) OVER (...) is therefore used and wrapped with SIZE() to obtain the
---       distinct-value count.
---
---    2. OVER must bind directly to COLLECT_SET(...), not to SIZE(...).
---
---    3. CTEs are scoped to a single SQL statement. Shared cleaning logic is therefore
---       materialized into temporary views before the two MERGE statements.
---
--- Performance:
---    - No partitioning because courses is a small dimension-like table.
---    - No OPTIMIZE, ZORDER, caching, or unnecessary repartitioning.
---    - Window functions are used for duplicate/conflict classification.
---    - Shared normalization and classification logic is materialized once.
---    - MERGE is used to make repeated executions idempotent.
--- ========================================================================================================
-
-
--- ========================================================================================================
--- STEP 0: CREATE SILVER TARGET TABLE
--- ========================================================================================================
+-- Cleans course data for the Silver layer.
+-- One row represents one module presentation.
+-- Invalid keys and conflicting duplicates go to a quarantine table.
+-- MERGE keeps reruns safe and avoids duplicate records.
 
 CREATE TABLE IF NOT EXISTS open_university.oulad_silver.courses_clean (
   code_module STRING,
@@ -85,9 +14,7 @@ CREATE TABLE IF NOT EXISTS open_university.oulad_silver.courses_clean (
 ) USING DELTA;
 
 
--- ========================================================================================================
--- STEP 0B: CREATE INVALID-KEY QUARANTINE TABLE
--- ========================================================================================================
+-- Step 0B: Create invalid-key quarantine table
 
 CREATE TABLE IF NOT EXISTS open_university.oulad_silver.courses_invalid_key_quarantine (
   quarantine_id STRING,
@@ -103,12 +30,8 @@ CREATE TABLE IF NOT EXISTS open_university.oulad_silver.courses_invalid_key_quar
 ) USING DELTA;
 
 
--- ========================================================================================================
--- STEP 1: NORMALIZE, CAST, AND FLAG SOURCE RECORDS
--- ========================================================================================================
---
+-- Step 1: Normalize, cast, and flag source records
 -- All Bronze rows are retained at this stage.
---
 -- Placeholder values are converted to SQL NULL only in the Silver transformation.
 -- No invalid source record is silently filtered out here.
 
@@ -179,18 +102,12 @@ CREATE OR REPLACE TEMPORARY VIEW courses_flagged_staging AS (
 );
 
 
--- ========================================================================================================
--- STEP 2: CLASSIFY VALID-KEY RECORDS FOR DUPLICATE / CONFLICT DETECTION
--- ========================================================================================================
---
+-- Step 2: Classify valid-key records for duplicate / conflict detection
 -- Only records with a complete business key participate in duplicate/conflict classification.
---
 -- A key with one distinct module_presentation_length value represents either:
 --    - one unique source row, or
 --    - exact duplicates.
---
 -- A key with more than one distinct length value represents a conflicting business key.
---
 -- COLLECT_SET removes duplicate values, while SIZE() returns the number of distinct values.
 -- This replaces unsupported COUNT(DISTINCT ...) OVER (...) syntax in Databricks/Spark SQL.
 
@@ -221,16 +138,11 @@ CREATE OR REPLACE TEMPORARY VIEW courses_classified_staging AS (
 );
 
 
--- ========================================================================================================
--- STEP 3: MERGE VALID-KEY RECORDS INTO SILVER
--- ========================================================================================================
---
+-- Step 3: Merge valid-key records into silver
 -- Unique records and exact duplicates are eligible for the clean table.
---
 -- ROW_NUMBER is used only when all records for a business key have the same
 -- module_presentation_length. It therefore collapses exact duplicates without
 -- arbitrarily resolving conflicting values.
---
 -- Invalid-key records are excluded here and handled in STEP 4.
 
 WITH clean_records AS (
@@ -307,21 +219,14 @@ VALUES (
 );
 
 
--- ========================================================================================================
--- STEP 4: PREPARE INVALID AND CONFLICTING RECORDS FOR QUARANTINE
--- ========================================================================================================
---
+-- Step 4: Prepare invalid and conflicting records for quarantine
 -- Two categories are quarantined:
---
 --    1. INVALID_BUSINESS_KEY
 --       code_module or code_presentation is missing after normalization.
---
 --    2. CONFLICTING_BUSINESS_KEY
 --       The same complete business key contains more than one distinct
 --       module_presentation_length value.
---
 -- No arbitrary value is selected for conflicting keys.
---
 -- source_row_count records how many source rows contributed to each quarantined
 -- combination for audit/review purposes.
 
@@ -439,10 +344,7 @@ quarantine_prepared AS (
 )
 
 
--- ========================================================================================================
--- STEP 5: MERGE QUARANTINED RECORDS
--- ========================================================================================================
---
+-- Step 5: Merge quarantined records
 -- quarantine_id provides deterministic idempotency.
 -- Rerunning the same Bronze input updates the existing quarantine record rather
 -- than inserting another copy.

@@ -1,98 +1,43 @@
--- ========================================================================================================
--- File: tests/02_clean_checks/02_silver_key_checks.sql
--- Branch: feature/clean-courses
---
--- Objective:
---    Verify business key integrity on currently implemented Silver clean tables.
---
---    Ensures:
---      1. Required business key attributes are not NULL.
---      2. The defined business key is unique.
---
--- Scope:
---    Currently implemented Silver transformation:
---      - courses_clean
---
--- Business Key:
---    courses_clean:
---      (code_module, code_presentation)
---
--- Output:
---    Read-only validation results showing invalid row/key counts and PASS/FAIL status.
---
--- No data is inserted, updated, deleted, or otherwise modified by this file.
--- ========================================================================================================
+-- Silver validation: business key integrity
+-- Scope: courses_clean + assessment_clean + student_assessment_clean
 
-
--- ========================================================================================================
--- CHECK 1: COURSES CLEAN - NULL BUSINESS KEY ATTRIBUTES
--- ========================================================================================================
---
--- Every Silver course record must contain both attributes required to identify its
--- module/presentation business key.
---
--- Expected result:
---    invalid_rows = 0
---    check_status = PASS
--- ========================================================================================================
-
-SELECT
-
-    'courses_clean_null_keys' AS check_name,
-
-    COUNT(*) AS invalid_rows,
-
-    CASE
-        WHEN COUNT(*) = 0 THEN 'PASS'
-        ELSE 'FAIL'
-    END AS check_status
-
+-- Courses: required composite key and uniqueness
+SELECT 'courses_clean_null_keys' AS check_name, COUNT(*) AS invalid_rows,
+       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS check_status
 FROM open_university.oulad_silver.courses_clean
+WHERE code_module IS NULL OR code_presentation IS NULL;
 
-WHERE code_module IS NULL
-   OR code_presentation IS NULL;
-
-
--- ========================================================================================================
--- CHECK 2: COURSES CLEAN - BUSINESS KEY UNIQUENESS
--- ========================================================================================================
---
--- The combination of code_module and code_presentation must identify exactly one
--- Silver course record.
---
--- Expected result:
---    duplicate_keys = 0
---    check_status = PASS
---
--- duplicate_keys counts the number of business-key combinations that occur more than once.
--- ========================================================================================================
-
-SELECT
-
-    'courses_clean_duplicate_keys' AS check_name,
-
-    COUNT(*) AS duplicate_keys,
-
-    CASE
-        WHEN COUNT(*) = 0 THEN 'PASS'
-        ELSE 'FAIL'
-    END AS check_status
-
+SELECT 'courses_clean_duplicate_keys' AS check_name, COUNT(*) AS duplicate_keys,
+       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS check_status
 FROM (
-
-    SELECT
-
-        code_module,
-        code_presentation,
-
-        COUNT(*) AS row_count
-
+    SELECT code_module, code_presentation
     FROM open_university.oulad_silver.courses_clean
-
-    GROUP BY
-        code_module,
-        code_presentation
-
+    GROUP BY code_module, code_presentation
     HAVING COUNT(*) > 1
+) duplicate_key_groups;
 
-) AS duplicate_key_groups;
+-- Assessment: id_assessment
+SELECT COUNT(*) AS null_id_assessment_count
+FROM open_university.oulad_silver.assessment_clean
+WHERE id_assessment IS NULL;
+
+SELECT id_assessment, COUNT(*) AS row_count
+FROM open_university.oulad_silver.assessment_clean
+GROUP BY id_assessment
+HAVING COUNT(*) > 1
+ORDER BY row_count DESC;
+
+-- Student assessment: (id_assessment, id_student)
+SELECT COUNT(*) AS null_id_assessment_count
+FROM open_university.oulad_silver.student_assessment_clean
+WHERE id_assessment IS NULL;
+
+SELECT COUNT(*) AS null_id_student_count
+FROM open_university.oulad_silver.student_assessment_clean
+WHERE id_student IS NULL;
+
+SELECT id_assessment, id_student, COUNT(*) AS row_count
+FROM open_university.oulad_silver.student_assessment_clean
+GROUP BY id_assessment, id_student
+HAVING COUNT(*) > 1
+ORDER BY row_count DESC;

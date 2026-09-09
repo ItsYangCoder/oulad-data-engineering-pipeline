@@ -1,28 +1,107 @@
--- File: assessment_clean.sql
--- Suggested branch: feature/clean-assessments
--- Purpose: Prepare assessment definitions and deadlines for the assessment fact.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: open_university.oulad_bronze.assessment_raw
--- Output: open_university.oulad_silver.assessment_clean
--- Grain / business key: One assessment; id_assessment.
+-- ============================================================
+-- Silver: Assessment Clean
+-- Source: open_university.oulad_bronze.assessment_raw
+-- Target: open_university.oulad_silver.assessment_clean
 --
--- What to put in this file:
--- 1. Use named CTEs to trim text, convert ?, blank, NA, N/A and NULL text to SQL NULL, then TRY_CAST
---    numeric fields.
--- 2. Keep code_module, code_presentation, id_assessment, assessment_type, date and weight.
--- 3. Cast id_assessment to BIGINT, date to INT and weight to an agreed DECIMAL type; standardize
---    assessment_type as CMA, TMA or Exam.
--- 4. Keep all 11 Exam records with missing date; preserve NULL deadlines and allow negative relative
---    days.
--- 5. Validate the assessment key, module-presentation parent, and non-null weight range 0 to 100;
---    investigate failures.
--- 6. Keep source column names; add clean_load_timestamp and clean_load_date. Record any invalid
---    required values for review instead of silently losing rows.
--- 7. Create the Delta target once if needed. Make repeat loads use the complete business key; rerunning
---    the same input must not add duplicate business rows.
---
--- Validation belongs in tests/02_clean_checks/; these counts describe the current source batch.
---
--- Done when: 206 rows for the current batch; unique non-null id_assessment; 11 NULL Exam dates; related
---    Silver checks pass.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+-- Grain: one row per assessment
+-- Business key: id_assessment
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS open_university.oulad_silver.assessment_clean (
+    code_module STRING,
+    code_presentation STRING,
+    id_assessment BIGINT,
+    assessment_type STRING,
+    date INT,
+    weight DECIMAL(5,2),
+    clean_load_timestamp TIMESTAMP,
+    clean_load_date DATE
+)
+USING DELTA;
+
+MERGE INTO open_university.oulad_silver.assessment_clean AS target
+USING (
+    SELECT
+        normalized_code_module AS code_module,
+        normalized_code_presentation AS code_presentation,
+        cleaned_id_assessment AS id_assessment,
+        normalized_assessment_type AS assessment_type,
+        cleaned_date AS date,
+        cleaned_weight AS weight,
+        current_timestamp() AS clean_load_timestamp,
+        current_date() AS clean_load_date
+    FROM (
+        SELECT
+            CASE
+                WHEN code_module IS NULL
+                     OR UPPER(TRIM(code_module)) IN ('?', '', 'NA', 'N/A', 'NULL')
+                THEN NULL
+                ELSE UPPER(TRIM(code_module))
+            END AS normalized_code_module,
+
+            CASE
+                WHEN code_presentation IS NULL
+                     OR UPPER(TRIM(code_presentation)) IN ('?', '', 'NA', 'N/A', 'NULL')
+                THEN NULL
+                ELSE UPPER(TRIM(code_presentation))
+            END AS normalized_code_presentation,
+
+            TRY_CAST(id_assessment AS BIGINT) AS cleaned_id_assessment,
+
+            CASE
+                WHEN assessment_type IS NULL
+                     OR UPPER(TRIM(assessment_type)) IN ('?', '', 'NA', 'N/A', 'NULL')
+                THEN NULL
+                WHEN UPPER(TRIM(assessment_type)) = 'EXAM' THEN 'Exam'
+                WHEN UPPER(TRIM(assessment_type)) = 'TMA' THEN 'TMA'
+                WHEN UPPER(TRIM(assessment_type)) = 'CMA' THEN 'CMA'
+                ELSE NULL
+            END AS normalized_assessment_type,
+
+            CASE
+                WHEN date IS NULL
+                     OR UPPER(TRIM(CAST(date AS STRING))) IN ('?', '', 'NA', 'N/A', 'NULL')
+                THEN NULL
+                ELSE TRY_CAST(date AS INT)
+            END AS cleaned_date,
+
+            CASE
+                WHEN weight IS NULL
+                     OR UPPER(TRIM(CAST(weight AS STRING))) IN ('?', '', 'NA', 'N/A', 'NULL')
+                THEN NULL
+                ELSE TRY_CAST(weight AS DECIMAL(5,2))
+            END AS cleaned_weight
+
+        FROM open_university.oulad_bronze.assessment_raw
+    ) prepared
+    WHERE cleaned_id_assessment IS NOT NULL
+) AS source
+ON target.id_assessment = source.id_assessment
+WHEN MATCHED THEN UPDATE SET
+    target.code_module = source.code_module,
+    target.code_presentation = source.code_presentation,
+    target.assessment_type = source.assessment_type,
+    target.date = source.date,
+    target.weight = source.weight,
+    target.clean_load_timestamp = source.clean_load_timestamp,
+    target.clean_load_date = source.clean_load_date
+WHEN NOT MATCHED THEN INSERT (
+    code_module,
+    code_presentation,
+    id_assessment,
+    assessment_type,
+    date,
+    weight,
+    clean_load_timestamp,
+    clean_load_date
+)
+VALUES (
+    source.code_module,
+    source.code_presentation,
+    source.id_assessment,
+    source.assessment_type,
+    source.date,
+    source.weight,
+    source.clean_load_timestamp,
+    source.clean_load_date
+);

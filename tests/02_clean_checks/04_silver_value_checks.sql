@@ -1,130 +1,56 @@
--- ========================================================================================================
--- File: tests/02_clean_checks/04_silver_value_checks.sql
--- Branch: feature/clean-courses
---
--- Objective:
---    Validate domain value integrity and metadata flag accuracy on currently implemented
---    Silver clean tables.
---
---    Ensures:
---      1. module_presentation_length contains only valid positive values when populated.
---      2. is_valid_length correctly reflects the validity of module_presentation_length.
---      3. Invalid business-key records are not present in the clean Silver table.
---
--- Scope:
---    Currently implemented Silver transformation:
---      - courses_clean
---
--- No data is inserted, updated, deleted, or otherwise modified by this file.
--- ========================================================================================================
+-- Silver validation: value/domain checks
+-- Scope: courses_clean + assessment_clean + student_assessment_clean
 
-
--- ========================================================================================================
--- CHECK 1: COURSES CLEAN - LENGTH DOMAIN VALIDITY
--- ========================================================================================================
---
--- module_presentation_length must be a positive value when populated.
---
--- Invalid values include:
---    - zero
---    - negative values
---
--- NULL is not treated as a domain violation here because missing values are handled separately
--- by the is_valid_length flag check.
---
--- Expected result:
---    invalid_rows = 0
---    check_status = PASS
--- ========================================================================================================
-
-SELECT
-
-    'courses_clean_invalid_length_values' AS check_name,
-
-    COUNT(*) AS invalid_rows,
-
-    CASE
-        WHEN COUNT(*) = 0 THEN 'PASS'
-        ELSE 'FAIL'
-    END AS check_status
-
+-- Courses length validity
+SELECT 'courses_clean_invalid_length_values' AS check_name, COUNT(*) AS invalid_rows,
+       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS check_status
 FROM open_university.oulad_silver.courses_clean
+WHERE module_presentation_length IS NOT NULL AND module_presentation_length <= 0;
 
-WHERE module_presentation_length IS NOT NULL
-  AND module_presentation_length <= 0;
-
-
--- ========================================================================================================
--- CHECK 2: COURSES CLEAN - LENGTH FLAG ACCURACY
--- ========================================================================================================
---
--- is_valid_length must correctly describe module_presentation_length.
---
--- Expected rule:
---    TRUE  -> module_presentation_length is present and greater than zero.
---    FALSE -> module_presentation_length is NULL or not greater than zero.
---
--- Expected result:
---    mismatch_rows = 0
---    check_status = PASS
--- ========================================================================================================
-
-SELECT
-
-    'courses_clean_flag_accuracy' AS check_name,
-
-    COUNT(*) AS mismatch_rows,
-
-    CASE
-        WHEN COUNT(*) = 0 THEN 'PASS'
-        ELSE 'FAIL'
-    END AS check_status
-
+SELECT 'courses_clean_flag_accuracy' AS check_name, COUNT(*) AS mismatch_rows,
+       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS check_status
 FROM open_university.oulad_silver.courses_clean
+WHERE (is_valid_length = TRUE AND (module_presentation_length IS NULL OR module_presentation_length <= 0))
+   OR (is_valid_length = FALSE AND module_presentation_length IS NOT NULL AND module_presentation_length > 0);
 
-WHERE
-      (
-          is_valid_length = TRUE
-          AND (
-              module_presentation_length IS NULL
-              OR module_presentation_length <= 0
-          )
-      )
-
-   OR (
-          is_valid_length = FALSE
-          AND (
-              module_presentation_length IS NOT NULL
-              AND module_presentation_length > 0
-          )
-      );
-
-
--- ========================================================================================================
--- CHECK 3: COURSES CLEAN - BUSINESS KEY FLAG ACCURACY
--- ========================================================================================================
---
--- Invalid business keys should not remain in courses_clean.
---
--- Invalid/conflicting business-key records are expected to be handled by the
--- courses_clean transformation and routed to the quarantine table.
---
--- Expected result:
---    invalid_key_flag_rows = 0
---    check_status = PASS
--- ========================================================================================================
-
-SELECT
-
-    'courses_clean_is_valid_key_check' AS check_name,
-
-    COUNT(*) AS invalid_key_flag_rows,
-
-    CASE
-        WHEN COUNT(*) = 0 THEN 'PASS'
-        ELSE 'FAIL'
-    END AS check_status
-
+SELECT 'courses_clean_is_valid_key_check' AS check_name, COUNT(*) AS invalid_key_flag_rows,
+       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS check_status
 FROM open_university.oulad_silver.courses_clean
-
 WHERE is_valid_key = FALSE;
+
+-- Assessment categories and ranges
+SELECT assessment_type, COUNT(*) AS row_count
+FROM open_university.oulad_silver.assessment_clean
+GROUP BY assessment_type
+ORDER BY assessment_type;
+
+SELECT DISTINCT assessment_type
+FROM open_university.oulad_silver.assessment_clean
+WHERE assessment_type NOT IN ('TMA', 'CMA', 'Exam') OR assessment_type IS NULL;
+
+SELECT id_assessment, weight
+FROM open_university.oulad_silver.assessment_clean
+WHERE weight IS NOT NULL AND (weight < 0 OR weight > 100);
+
+SELECT *
+FROM open_university.oulad_silver.assessment_clean
+WHERE TRIM(code_module) IN ('?', '', 'NA', 'N/A', 'NULL')
+   OR TRIM(code_presentation) IN ('?', '', 'NA', 'N/A', 'NULL')
+   OR TRIM(assessment_type) IN ('?', '', 'NA', 'N/A', 'NULL');
+
+-- Student assessment ranges and placeholders
+SELECT id_assessment, id_student, score
+FROM open_university.oulad_silver.student_assessment_clean
+WHERE score IS NOT NULL AND (score < 0 OR score > 100);
+
+SELECT DISTINCT is_banked
+FROM open_university.oulad_silver.student_assessment_clean
+WHERE is_banked IS NOT NULL AND is_banked NOT IN (0, 1);
+
+SELECT *
+FROM open_university.oulad_silver.student_assessment_clean
+WHERE CAST(id_assessment AS STRING) IN ('?', '', 'NA', 'N/A', 'NULL')
+   OR CAST(id_student AS STRING) IN ('?', '', 'NA', 'N/A', 'NULL')
+   OR CAST(date_submitted AS STRING) IN ('?', '', 'NA', 'N/A', 'NULL')
+   OR CAST(is_banked AS STRING) IN ('?', '', 'NA', 'N/A', 'NULL')
+   OR CAST(score AS STRING) IN ('?', '', 'NA', 'N/A', 'NULL');

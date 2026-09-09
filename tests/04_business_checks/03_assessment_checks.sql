@@ -1,12 +1,8 @@
--- File: 03_assessment_checks.sql
--- Suggested branch: feature/assessment-analysis
 -- Purpose: Validate assessment performance statistics, coverage and business definitions.
 -- Input: 03_assessment_performance.sql logic and Gold fact_assessments.
--- Output: Read-only validation queries. Each query returns only failures unless noted.
---
+-- Result: Read-only validation queries. Each query returns only failures unless noted.
 -- Manual Databricks checks: a displayed zero-row result is evidence for that check,
 -- but an automated runner must explicitly fail on violations.
---
 -- Business definitions checked here:
 -- * result_count includes scored and missing-score records.
 -- * scored_result_count uses COUNT(score), so NULL scores are excluded.

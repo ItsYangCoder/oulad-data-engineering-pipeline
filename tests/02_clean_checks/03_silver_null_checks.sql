@@ -308,7 +308,26 @@ SELECT
         ELSE 'Fail'
     END
 
-FROM registration_conversion_losses
+FROM (
+    SELECT b.code_module, b.code_presentation, b.id_student
+    FROM open_university.oulad_bronze.student_registration_raw AS b
+    INNER JOIN open_university.oulad_silver.student_registration_clean AS s
+        ON UPPER(TRIM(CAST(b.code_module AS STRING))) = s.code_module
+       AND UPPER(TRIM(CAST(b.code_presentation AS STRING))) = s.code_presentation
+       AND TRY_CAST(b.id_student AS BIGINT) = s.id_student
+    WHERE (
+        b.date_registration IS NOT NULL
+        AND UPPER(TRIM(CAST(b.date_registration AS STRING))) NOT IN ('', '?', 'NA', 'N/A', 'NULL')
+        AND TRY_CAST(b.date_registration AS INT) IS NOT NULL
+        AND s.date_registration IS NULL
+    )
+    OR (
+        b.date_unregistration IS NOT NULL
+        AND UPPER(TRIM(CAST(b.date_unregistration AS STRING))) NOT IN ('', '?', 'NA', 'N/A', 'NULL')
+        AND TRY_CAST(b.date_unregistration AS INT) IS NOT NULL
+        AND s.date_unregistration IS NULL
+    )
+) AS registration_conversion_losses
 
 
 UNION ALL

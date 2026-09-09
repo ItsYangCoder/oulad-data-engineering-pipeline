@@ -26,162 +26,328 @@
 -- Read: docs/pipeline_plan.md and docs/assumptions.md.
 
 -- ============================================================
--- 1. Assessment row-count reconciliation
+-- 06_silver_reconciliation_checks.sql
+-- Assessment + Student Assessment Silver Reconciliation
+--
 -- Expected:
--- Bronze = Silver = 206
+-- assessment rows = 206
+-- student assessment rows = 173,912
+-- missing/extra keys = 0
+-- missing scores = 173
+-- score reconciliation = PASS
 -- ============================================================
 
-SELECT
-    (SELECT COUNT(*)
-     FROM open_university.oulad_bronze.assessment_raw) AS bronze_count,
 
-    (SELECT COUNT(*)
-     FROM open_university.oulad_silver.assessment_clean) AS silver_count,
+-- ============================================================
+-- 1. Assessment row-count reconciliation
+-- ============================================================
 
-    (SELECT COUNT(*)
-     FROM open_university.oulad_silver.assessment_clean)
-    -
-    (SELECT COUNT(*)
-     FROM open_university.oulad_bronze.assessment_raw) AS difference;
+WITH assessment_counts AS (
+    SELECT
+        (
+            SELECT COUNT(*)
+            FROM open_university.oulad_bronze.assessment_raw
+        ) AS bronze_count,
+
+        (
+            SELECT COUNT(*)
+            FROM open_university.oulad_silver.assessment_clean
+        ) AS silver_count
+),
 
 
 -- ============================================================
 -- 2. Student assessment row-count reconciliation
--- Expected:
--- Bronze = Silver = 173,912
 -- ============================================================
 
-SELECT
-    (SELECT COUNT(*)
-     FROM open_university.oulad_bronze.student_assessment_raw) AS bronze_count,
+student_assessment_counts AS (
+    SELECT
+        (
+            SELECT COUNT(*)
+            FROM open_university.oulad_bronze.student_assessment_raw
+        ) AS bronze_count,
 
-    (SELECT COUNT(*)
-     FROM open_university.oulad_silver.student_assessment_clean) AS silver_count,
-
-    (SELECT COUNT(*)
-     FROM open_university.oulad_silver.student_assessment_clean)
-    -
-    (SELECT COUNT(*)
-     FROM open_university.oulad_bronze.student_assessment_raw) AS difference;
+        (
+            SELECT COUNT(*)
+            FROM open_university.oulad_silver.student_assessment_clean
+        ) AS silver_count
+),
 
 
 -- ============================================================
--- 3. Assessment business-key coverage
--- Check Bronze -> Silver
+-- 3. Assessment Bronze -> Silver key coverage
 -- Expected: 0 missing keys
 -- ============================================================
 
-SELECT
-    COUNT(*) AS missing_assessment_keys
-FROM open_university.oulad_bronze.assessment_raw b
-LEFT JOIN open_university.oulad_silver.assessment_clean s
-    ON TRY_CAST(b.id_assessment AS BIGINT) = s.id_assessment
-WHERE s.id_assessment IS NULL;
+assessment_missing AS (
+    SELECT COUNT(*) AS count
+    FROM open_university.oulad_bronze.assessment_raw b
+    LEFT JOIN open_university.oulad_silver.assessment_clean s
+        ON TRY_CAST(b.id_assessment AS BIGINT) = s.id_assessment
+    WHERE s.id_assessment IS NULL
+),
 
 
 -- ============================================================
--- 4. Assessment business-key coverage
--- Check Silver -> Bronze
+-- 4. Assessment Silver -> Bronze key coverage
 -- Expected: 0 extra keys
 -- ============================================================
 
-SELECT
-    COUNT(*) AS extra_assessment_keys
-FROM open_university.oulad_silver.assessment_clean s
-LEFT JOIN open_university.oulad_bronze.assessment_raw b
-    ON s.id_assessment = TRY_CAST(b.id_assessment AS BIGINT)
-WHERE b.id_assessment IS NULL;
+assessment_extra AS (
+    SELECT COUNT(*) AS count
+    FROM open_university.oulad_silver.assessment_clean s
+    LEFT JOIN open_university.oulad_bronze.assessment_raw b
+        ON s.id_assessment = TRY_CAST(b.id_assessment AS BIGINT)
+    WHERE b.id_assessment IS NULL
+),
 
 
 -- ============================================================
--- 5. Student assessment business-key coverage
--- Check Bronze -> Silver
+-- 5. Student Assessment Bronze -> Silver key coverage
 -- Expected: 0 missing keys
+-- Key = id_assessment + id_student
 -- ============================================================
 
-SELECT
-    COUNT(*) AS missing_student_assessment_keys
-FROM open_university.oulad_bronze.student_assessment_raw b
-LEFT JOIN open_university.oulad_silver.student_assessment_clean s
-    ON TRY_CAST(b.id_assessment AS BIGINT) = s.id_assessment
-   AND TRY_CAST(b.id_student AS BIGINT) = s.id_student
-WHERE s.id_assessment IS NULL;
+student_assessment_missing AS (
+    SELECT COUNT(*) AS count
+    FROM open_university.oulad_bronze.student_assessment_raw b
+    LEFT JOIN open_university.oulad_silver.student_assessment_clean s
+        ON TRY_CAST(b.id_assessment AS BIGINT) = s.id_assessment
+       AND TRY_CAST(b.id_student AS BIGINT) = s.id_student
+    WHERE s.id_assessment IS NULL
+),
 
 
 -- ============================================================
--- 6. Student assessment business-key coverage
--- Check Silver -> Bronze
+-- 6. Student Assessment Silver -> Bronze key coverage
 -- Expected: 0 extra keys
 -- ============================================================
 
-SELECT
-    COUNT(*) AS extra_student_assessment_keys
-FROM open_university.oulad_silver.student_assessment_clean s
-LEFT JOIN open_university.oulad_bronze.student_assessment_raw b
-    ON s.id_assessment = TRY_CAST(b.id_assessment AS BIGINT)
-   AND s.id_student = TRY_CAST(b.id_student AS BIGINT)
-WHERE b.id_assessment IS NULL;
+student_assessment_extra AS (
+    SELECT COUNT(*) AS count
+    FROM open_university.oulad_silver.student_assessment_clean s
+    LEFT JOIN open_university.oulad_bronze.student_assessment_raw b
+        ON s.id_assessment = TRY_CAST(b.id_assessment AS BIGINT)
+       AND s.id_student = TRY_CAST(b.id_student AS BIGINT)
+    WHERE b.id_assessment IS NULL
+),
 
 
 -- ============================================================
 -- 7. Score reconciliation
 --
--- Expected:
--- - Bronze and Silver scored-row counts match
--- - Bronze and Silver NULL-score counts match
--- - SUM(score) matches
+-- Bronze:
+-- ?, '', NA, N/A, NULL = missing
 --
--- NULL scores are expected and must remain NULL.
+-- Silver:
+-- missing scores should be SQL NULL
+--
+-- Expected:
+-- scored Bronze = scored Silver
+-- missing Bronze = missing Silver
+-- score SUM = same
 -- ============================================================
 
-WITH bronze_scores AS (
+score_reconciliation AS (
     SELECT
-        COUNT(score) AS scored_count,
-        COUNT(*) - COUNT(score) AS missing_score_count,
-        SUM(TRY_CAST(score AS DECIMAL(5,2))) AS score_sum
-    FROM open_university.oulad_bronze.student_assessment_raw
-    WHERE TRIM(score) NOT IN ('?', '', 'NA', 'N/A', 'NULL')
-       OR score IS NULL
+
+        -- --------------------------------------------
+        -- Bronze scored rows
+        -- --------------------------------------------
+        (
+            SELECT COUNT(*)
+            FROM open_university.oulad_bronze.student_assessment_raw
+            WHERE TRIM(score) NOT IN (
+                '?',
+                '',
+                'NA',
+                'N/A',
+                'NULL'
+            )
+            AND score IS NOT NULL
+        ) AS bronze_scored_count,
+
+
+        -- --------------------------------------------
+        -- Silver scored rows
+        -- --------------------------------------------
+        (
+            SELECT COUNT(score)
+            FROM open_university.oulad_silver.student_assessment_clean
+        ) AS silver_scored_count,
+
+
+        -- --------------------------------------------
+        -- Bronze missing scores
+        -- IMPORTANT:
+        -- Count placeholders as missing
+        -- --------------------------------------------
+        (
+            SELECT COUNT(*)
+            FROM open_university.oulad_bronze.student_assessment_raw
+            WHERE score IS NULL
+               OR TRIM(score) IN (
+                    '?',
+                    '',
+                    'NA',
+                    'N/A',
+                    'NULL'
+               )
+        ) AS bronze_missing_score_count,
+
+
+        -- --------------------------------------------
+        -- Silver missing scores
+        -- --------------------------------------------
+        (
+            SELECT COUNT(*)
+            FROM open_university.oulad_silver.student_assessment_clean
+            WHERE score IS NULL
+        ) AS silver_missing_score_count,
+
+
+        -- --------------------------------------------
+        -- Bronze score sum
+        -- Exclude known missing placeholders
+        -- --------------------------------------------
+        (
+            SELECT SUM(
+                TRY_CAST(score AS DECIMAL(5,2))
+            )
+            FROM open_university.oulad_bronze.student_assessment_raw
+            WHERE score IS NOT NULL
+              AND TRIM(score) NOT IN (
+                    '?',
+                    '',
+                    'NA',
+                    'N/A',
+                    'NULL'
+              )
+        ) AS bronze_score_sum,
+
+
+        -- --------------------------------------------
+        -- Silver score sum
+        -- --------------------------------------------
+        (
+            SELECT SUM(score)
+            FROM open_university.oulad_silver.student_assessment_clean
+        ) AS silver_score_sum
 ),
 
-silver_scores AS (
-    SELECT
-        COUNT(score) AS scored_count,
-        COUNT(*) - COUNT(score) AS missing_score_count,
-        SUM(score) AS score_sum
+
+-- ============================================================
+-- 8. Expected NULL score count
+-- Expected: 173
+-- ============================================================
+
+null_scores AS (
+    SELECT COUNT(*) AS count
     FROM open_university.oulad_silver.student_assessment_clean
+    WHERE score IS NULL
 )
 
+
+-- ============================================================
+-- FINAL RECONCILIATION RESULT
+-- ============================================================
+
 SELECT
-    b.scored_count AS bronze_scored_count,
-    s.scored_count AS silver_scored_count,
 
-    b.missing_score_count AS bronze_missing_score_count,
-    s.missing_score_count AS silver_missing_score_count,
+    -- --------------------------------------------
+    -- Row counts
+    -- --------------------------------------------
 
-    b.score_sum AS bronze_score_sum,
-    s.score_sum AS silver_score_sum,
+    a.bronze_count AS assessment_bronze_rows,
+    a.silver_count AS assessment_silver_rows,
+
+    sa.bronze_count AS student_assessment_bronze_rows,
+    sa.silver_count AS student_assessment_silver_rows,
+
+
+    -- --------------------------------------------
+    -- Assessment key coverage
+    -- --------------------------------------------
+
+    am.count AS missing_assessment_keys,
+    ae.count AS extra_assessment_keys,
+
+
+    -- --------------------------------------------
+    -- Student Assessment key coverage
+    -- --------------------------------------------
+
+    sam.count AS missing_student_assessment_keys,
+    sae.count AS extra_student_assessment_keys,
+
+
+    -- --------------------------------------------
+    -- Score reconciliation
+    -- --------------------------------------------
+
+    sr.bronze_scored_count,
+    sr.silver_scored_count,
+
+    sr.bronze_missing_score_count,
+    sr.silver_missing_score_count,
+
+    sr.bronze_score_sum,
+    sr.silver_score_sum,
+
+
+    -- --------------------------------------------
+    -- Expected NULL scores
+    -- --------------------------------------------
+
+    ns.count AS expected_null_scores,
+
+
+    -- --------------------------------------------
+    -- FINAL STATUS
+    -- --------------------------------------------
 
     CASE
-        WHEN b.scored_count = s.scored_count
-         AND b.missing_score_count = s.missing_score_count
-         AND b.score_sum = s.score_sum
+        WHEN a.bronze_count = 206
+         AND a.silver_count = 206
+
+         AND sa.bronze_count = 173912
+         AND sa.silver_count = 173912
+
+         AND am.count = 0
+         AND ae.count = 0
+
+         AND sam.count = 0
+         AND sae.count = 0
+
+         AND sr.bronze_scored_count = sr.silver_scored_count
+
+         AND sr.bronze_missing_score_count
+             = sr.silver_missing_score_count
+
+         AND sr.bronze_score_sum
+             = sr.silver_score_sum
+
+         AND ns.count = 173
+
         THEN 'PASS'
+
         ELSE 'FAIL'
-    END AS status
-FROM bronze_scores b
-CROSS JOIN silver_scores s;
+    END AS reconciliation_status
 
 
--- ============================================================
--- 8. Documented missing-score reconciliation
--- Expected:
--- 173 missing scores
--- ============================================================
+FROM assessment_counts a
 
-SELECT
-    COUNT(*) AS null_score_count
-FROM open_university.oulad_silver.student_assessment_clean
-WHERE score IS NULL;
+CROSS JOIN student_assessment_counts sa
 
+CROSS JOIN assessment_missing am
+
+CROSS JOIN assessment_extra ae
+
+CROSS JOIN student_assessment_missing sam
+
+CROSS JOIN student_assessment_extra sae
+
+CROSS JOIN score_reconciliation sr
+
+CROSS JOIN null_scores ns;
 

@@ -1,27 +1,55 @@
-{{ config(enabled=false) }}
+{{ config(enabled=true) }}
 
--- File: assessment_click_reconciliation.sql
--- Suggested branch: feature/build-assessment-mart
--- Purpose: Reconcile assessment results and scores from Silver to Gold.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: source('oulad_silver', 'student_assessment_clean'), assessment_clean for context, and
---    ref('fact_assessments').
--- Output: A dbt singular test: one SELECT/CTE query returning failing rows only.
---
--- What to put in this file:
--- 1. Despite this existing filename, this test is for ASSESSMENTS; it does not compare VLE clicks or
---    join the two facts.
--- 2. Compare result-key coverage, total result count, non-null score count, NULL score count and
---    SUM(score).
--- 3. Compare globally and per module presentation using assessment_clean to resolve Silver presentation
---    context.
--- 4. Return only missing/extra keys or nonzero differences; handle NULL aggregates explicitly.
--- 5. If renaming this file later, update references consistently; a clearer name would be
---    assessment_reconciliation.sql.
--- 6. Remove enabled=false when the SQL and upstream model are ready, then run this test and verify it
---    catches a deliberate failing case in development.
---
---
--- Done when: Zero returned mismatches; expected current-batch totals include 173,912 results and 173
---    NULL scores.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+with source_results as (
+    select
+        id_assessment,
+        id_student,
+        count(*) as result_count,
+        count(score) as scored_count,
+        count(*) - count(score) as null_score_count,
+        coalesce(sum(score), 0) as score_sum
+    from {{ source('oulad_silver', 'student_assessment_clean') }}
+    group by id_assessment, id_student
+),
+
+gold_results as (
+    select
+        id_assessment,
+        id_student,
+        count(*) as result_count,
+        count(score) as scored_count,
+        count(*) - count(score) as null_score_count,
+        coalesce(sum(score), 0) as score_sum
+    from {{ ref('fact_assessments') }}
+    group by id_assessment, id_student
+),
+
+key_reconciliation as (
+    select
+        coalesce(s.id_assessment, g.id_assessment) as id_assessment,
+        coalesce(s.id_student, g.id_student) as id_student,
+        coalesce(s.result_count, 0) as source_result_count,
+        coalesce(g.result_count, 0) as gold_result_count,
+        coalesce(s.scored_count, 0) as source_scored_count,
+        coalesce(g.scored_count, 0) as gold_scored_count,
+        coalesce(s.null_score_count, 0) as source_null_score_count,
+        coalesce(g.null_score_count, 0) as gold_null_score_count,
+        coalesce(s.score_sum, 0) as source_score_sum,
+        coalesce(g.score_sum, 0) as gold_score_sum
+    from source_results s
+    full outer join gold_results g
+        on s.id_assessment = g.id_assessment
+        and s.id_student = g.id_student
+),
+
+failures as (
+    select *
+    from key_reconciliation
+    where source_result_count <> gold_result_count
+       or source_scored_count <> gold_scored_count
+       or source_null_score_count <> gold_null_score_count
+       or abs(source_score_sum - gold_score_sum) > 0.01
+)
+
+select *
+from failures

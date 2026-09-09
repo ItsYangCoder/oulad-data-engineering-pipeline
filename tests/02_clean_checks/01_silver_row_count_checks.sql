@@ -1,93 +1,49 @@
--- File: 01_silver_row_count_checks.sql
--- Suggested branch: feature/add-silver-checks
--- For checks tied to one transformation, use that transformation's branch instead.
--- Purpose: Explain every Bronze-to-Silver row-count difference.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: All seven Bronze and matching Silver tables.
--- Output: Read-only validation queries with failure counts/details and stated expected results; no data
---    changes.
---
--- What to put in this file:
--- 1. Return table_name, bronze_count, silver_count, expected_count, difference and a clear status for
---    the current batch.
--- 2. Expect assessment 206; courses 22; student_assessment 173,912; student_info and
---    student_registration 32,593 each; vle 6,364.
--- 3. Expect student_vle to change from 10,655,280 source rows to 8,459,320 complete daily keys after
---    aggregation.
--- 4. Compare with live Bronze counts and document any new-batch baseline changes; fixed counts are not
---    universal thresholds.
---
--- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
---    result alone is not an automated test.
---
--- Done when: All differences are explained by the documented transformation, with no unexpected loss.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+-- Silver validation: row counts
+-- Scope: courses_clean + assessment_clean + student_assessment_clean
 
 -- ============================================================
--- File: 01_silver_row_count_checks.sql
--- Branch: feature/clean-assessments
---
--- Purpose:
--- Validate Bronze-to-Silver row counts for the assessment
--- transformations.
---
--- Expected current-batch counts:
---   assessment_clean          = 206
---   student_assessment_clean  = 173,912
---
--- This is a read-only validation check.
+-- COURSES CLEAN
 -- ============================================================
-
-
-WITH row_counts AS (
-
-    -- Assessment
-    SELECT
-        'assessment_clean' AS table_name,
-        (
-            SELECT COUNT(*)
-            FROM open_university.oulad_bronze.assessment_raw
-        ) AS bronze_count,
-        (
-            SELECT COUNT(*)
-            FROM open_university.oulad_silver.assessment_clean
-        ) AS silver_count,
-        206 AS expected_count
-
-    UNION ALL
-
-    -- Student Assessment
-    SELECT
-        'student_assessment_clean' AS table_name,
-        (
-            SELECT COUNT(*)
-            FROM open_university.oulad_bronze.student_assessment_raw
-        ) AS bronze_count,
-        (
-            SELECT COUNT(*)
-            FROM open_university.oulad_silver.student_assessment_clean
-        ) AS silver_count,
-        173912 AS expected_count
+WITH raw_counts AS (
+    SELECT COUNT(*) AS raw_count FROM open_university.oulad_bronze.courses_raw
+), clean_counts AS (
+    SELECT COUNT(*) AS clean_count FROM open_university.oulad_silver.courses_clean
+), quarantine_counts AS (
+    SELECT COALESCE(SUM(source_row_count), 0) AS quarantine_count
+    FROM open_university.oulad_silver.courses_invalid_key_quarantine
 )
-
 SELECT
-    table_name,
-    bronze_count,
-    silver_count,
-    expected_count,
-    silver_count - bronze_count AS difference,
+    'courses' AS entity_name,
+    raw.raw_count,
+    clean.clean_count,
+    quarantine.quarantine_count,
+    clean.clean_count + quarantine.quarantine_count AS accounted_count,
+    raw.raw_count - (clean.clean_count + quarantine.quarantine_count) AS leakage_count,
+    CASE WHEN raw.raw_count - (clean.clean_count + quarantine.quarantine_count) = 0 THEN 'PASS' ELSE 'FAIL' END AS check_status
+FROM raw_counts raw
+CROSS JOIN clean_counts clean
+CROSS JOIN quarantine_counts quarantine;
 
-    CASE
-        WHEN silver_count = expected_count
-             AND silver_count = bronze_count
-        THEN 'PASS'
-
-        WHEN silver_count = expected_count
-             AND silver_count <> bronze_count
-        THEN 'REVIEW - documented transformation difference'
-
-        ELSE 'FAIL'
-    END AS status
-
+-- ============================================================
+-- ASSESSMENT + STUDENT ASSESSMENT
+-- ============================================================
+WITH row_counts AS (
+    SELECT 'assessment_clean' AS table_name,
+           (SELECT COUNT(*) FROM open_university.oulad_bronze.assessment_raw) AS bronze_count,
+           (SELECT COUNT(*) FROM open_university.oulad_silver.assessment_clean) AS silver_count,
+           206 AS expected_count
+    UNION ALL
+    SELECT 'student_assessment_clean',
+           (SELECT COUNT(*) FROM open_university.oulad_bronze.student_assessment_raw),
+           (SELECT COUNT(*) FROM open_university.oulad_silver.student_assessment_clean),
+           173912
+)
+SELECT table_name, bronze_count, silver_count, expected_count,
+       silver_count - bronze_count AS difference,
+       CASE
+           WHEN silver_count = expected_count AND silver_count = bronze_count THEN 'PASS'
+           WHEN silver_count = expected_count AND silver_count <> bronze_count THEN 'REVIEW - documented transformation difference'
+           ELSE 'FAIL'
+       END AS status
 FROM row_counts
 ORDER BY table_name;

@@ -19,12 +19,6 @@ CREATE TABLE IF NOT EXISTS open_university.oulad_silver.assessment_clean (
 )
 USING DELTA;
 
--- Validate required business key before MERGE.
--- Invalid keys are reported and excluded from the load below.
-SELECT COUNT(*) AS invalid_assessment_keys
-FROM open_university.oulad_bronze.assessment_raw
-WHERE TRY_CAST(id_assessment AS BIGINT) IS NULL;
-
 MERGE INTO open_university.oulad_silver.assessment_clean AS target
 USING (
     SELECT

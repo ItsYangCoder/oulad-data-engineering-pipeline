@@ -1,24 +1,86 @@
--- File: 01_silver_row_count_checks.sql
--- Suggested branch: feature/add-silver-checks
--- For checks tied to one transformation, use that transformation's branch instead.
--- Purpose: Explain every Bronze-to-Silver row-count difference.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: All seven Bronze and matching Silver tables.
--- Output: Read-only validation queries with failure counts/details and stated expected results; no data
---    changes.
+-- ========================================================================================================
+-- File: tests/02_clean_checks/01_silver_row_count_checks.sql
+-- Branch: feature/clean-courses
 --
--- What to put in this file:
--- 1. Return table_name, bronze_count, silver_count, expected_count, difference and a clear status for
---    the current batch.
--- 2. Expect assessment 206; courses 22; student_assessment 173,912; student_info and
---    student_registration 32,593 each; vle 6,364.
--- 3. Expect student_vle to change from 10,655,280 source rows to 8,459,320 complete daily keys after
---    aggregation.
--- 4. Compare with live Bronze counts and document any new-batch baseline changes; fixed counts are not
---    universal thresholds.
+-- Objective:
+--    Validate Bronze-to-Silver row accounting for the currently implemented Silver transformations.
 --
--- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
---    result alone is not an automated test.
+--    The check identifies whether Bronze source rows are fully accounted for across:
+--      - Silver clean records
+--      - Silver quarantine records
+--      - documented deduplication
 --
--- Done when: All differences are explained by the documented transformation, with no unexpected loss.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+--    A zero leakage count indicates that the transformation accounts for all source rows.
+--
+-- Scope:
+--    Currently implemented Silver transformation:
+--      - courses
+--
+-- Output:
+--    One validation record showing Bronze rows, Silver clean rows, quarantine rows,
+--    accounted rows, leakage count, and PASS/FAIL status.
+--
+-- No data is inserted, updated, deleted, or otherwise modified by this file.
+-- ========================================================================================================
+
+
+WITH raw_counts AS (
+
+    SELECT
+        COUNT(*) AS raw_count
+    FROM open_university.oulad_bronze.courses_raw
+
+),
+
+clean_counts AS (
+
+    SELECT
+        COUNT(*) AS clean_count
+    FROM open_university.oulad_silver.courses_clean
+
+),
+
+quarantine_counts AS (
+
+    SELECT
+        COALESCE(SUM(source_row_count), 0) AS quarantine_count
+    FROM open_university.oulad_silver.courses_invalid_key_quarantine
+
+)
+
+SELECT
+
+    'courses' AS entity_name,
+
+    raw.raw_count,
+
+    clean.clean_count,
+
+    quarantine.quarantine_count,
+
+    clean.clean_count
+        + quarantine.quarantine_count
+        AS accounted_count,
+
+    raw.raw_count
+        - (
+            clean.clean_count
+            + quarantine.quarantine_count
+          )
+        AS leakage_count,
+
+    CASE
+        WHEN raw.raw_count
+             - (
+                 clean.clean_count
+                 + quarantine.quarantine_count
+               ) = 0
+        THEN 'PASS'
+        ELSE 'FAIL'
+    END AS check_status
+
+FROM raw_counts AS raw
+
+CROSS JOIN clean_counts AS clean
+
+CROSS JOIN quarantine_counts AS quarantine;

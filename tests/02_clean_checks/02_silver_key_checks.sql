@@ -1,23 +1,98 @@
--- File: 02_silver_key_checks.sql
--- Suggested branch: feature/add-silver-checks
--- For checks tied to one transformation, use that transformation's branch instead.
--- Purpose: Find missing or repeated Silver business keys.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: All seven Silver tables.
--- Output: Read-only validation queries with failure counts/details and stated expected results; no data
---    changes.
+-- ========================================================================================================
+-- File: tests/02_clean_checks/02_silver_key_checks.sql
+-- Branch: feature/clean-courses
 --
--- What to put in this file:
--- 1. Check assessment by id_assessment; courses by code_module + code_presentation.
--- 2. Check student_assessment by id_assessment + id_student; student_info and registration by
---    code_module + code_presentation + id_student.
--- 3. Check vle by code_module + code_presentation + id_site; student_vle by those codes plus id_student
---    + id_site + date.
--- 4. Test each key component for NULL/blank separately, then GROUP BY the full key and HAVING COUNT(*)
---    > 1.
+-- Objective:
+--    Verify business key integrity on currently implemented Silver clean tables.
 --
--- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
---    result alone is not an automated test.
+--    Ensures:
+--      1. Required business key attributes are not NULL.
+--      2. The defined business key is unique.
 --
--- Done when: No missing required key components and no repeated full business keys.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+-- Scope:
+--    Currently implemented Silver transformation:
+--      - courses_clean
+--
+-- Business Key:
+--    courses_clean:
+--      (code_module, code_presentation)
+--
+-- Output:
+--    Read-only validation results showing invalid row/key counts and PASS/FAIL status.
+--
+-- No data is inserted, updated, deleted, or otherwise modified by this file.
+-- ========================================================================================================
+
+
+-- ========================================================================================================
+-- CHECK 1: COURSES CLEAN - NULL BUSINESS KEY ATTRIBUTES
+-- ========================================================================================================
+--
+-- Every Silver course record must contain both attributes required to identify its
+-- module/presentation business key.
+--
+-- Expected result:
+--    invalid_rows = 0
+--    check_status = PASS
+-- ========================================================================================================
+
+SELECT
+
+    'courses_clean_null_keys' AS check_name,
+
+    COUNT(*) AS invalid_rows,
+
+    CASE
+        WHEN COUNT(*) = 0 THEN 'PASS'
+        ELSE 'FAIL'
+    END AS check_status
+
+FROM open_university.oulad_silver.courses_clean
+
+WHERE code_module IS NULL
+   OR code_presentation IS NULL;
+
+
+-- ========================================================================================================
+-- CHECK 2: COURSES CLEAN - BUSINESS KEY UNIQUENESS
+-- ========================================================================================================
+--
+-- The combination of code_module and code_presentation must identify exactly one
+-- Silver course record.
+--
+-- Expected result:
+--    duplicate_keys = 0
+--    check_status = PASS
+--
+-- duplicate_keys counts the number of business-key combinations that occur more than once.
+-- ========================================================================================================
+
+SELECT
+
+    'courses_clean_duplicate_keys' AS check_name,
+
+    COUNT(*) AS duplicate_keys,
+
+    CASE
+        WHEN COUNT(*) = 0 THEN 'PASS'
+        ELSE 'FAIL'
+    END AS check_status
+
+FROM (
+
+    SELECT
+
+        code_module,
+        code_presentation,
+
+        COUNT(*) AS row_count
+
+    FROM open_university.oulad_silver.courses_clean
+
+    GROUP BY
+        code_module,
+        code_presentation
+
+    HAVING COUNT(*) > 1
+
+) AS duplicate_key_groups;

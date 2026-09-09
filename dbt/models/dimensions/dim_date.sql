@@ -1,31 +1,138 @@
-{{ config(enabled=false) }}
+{{ config(enabled=true) }}
 
--- File: dim_date.sql
--- Suggested branch: feature/build-dimensions
--- Purpose: Provide a shared relative-day lookup for submission, interaction and registration timing.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: Silver assessment_clean.date, student_assessment_clean.date_submitted, student_vle_clean.date,
---    and both student_registration_clean date fields.
+-- dbt/models/dimensions/dim_date.sql
+-- Grain: one row per non-null relative_day
+-- Sources:
+--   assessment_clean.date
+--   student_assessment_clean.date_submitted
+--   student_vle_clean.date
+--   student_registration_clean.date_registration
+--   student_registration_clean.date_unregistration
+-- Key method: md5 of relative_day cast to string
 -- Output: open_university.oulad_gold.dim_date
--- Grain / business key: One row per non-null relative_day.
 --
--- What to put in this file:
--- 1. Write a dbt SELECT with named CTEs, source() for Silver inputs and ref() for other Gold models;
---    dbt manages the target relation.
--- 2. Collect distinct relative days across the listed inputs; include day 0 and every valid negative or
---    positive day used downstream.
--- 3. Expose date_key, relative_day and is_before_presentation; document any relative_week or
---    timing_group calculation.
--- 4. Use day 0 to mean presentation start. OULAD event dates are offsets, not real calendar dates.
--- 5. Do not fill missing source dates with day 0 or generate calendar month/day names without supplied
---    start dates.
--- 6. Use consistent, repeatable dimension keys and mart_load_timestamp/mart_load_date audit fields; do
---    not regenerate keys in a different order on reruns.
--- 7. Remove enabled=false only when this model and its dependencies are implemented; add
---    documentation/tests in the adjacent YAML.
+-- OULAD dates are relative day offsets from the module presentation start.
+-- Day 0 means presentation start.
+-- Negative values represent days before presentation start.
+-- Positive values represent days after presentation start.
 --
--- This file is one of the five required dimensions.
+-- relative_week calculation:
+-- floor(relative_day / 7.0)
+--   days 0 to 6    = week 0
+--   days 7 to 13   = week 1
+--   days -1 to -7  = week -1
+--   days -8 to -14 = week -2
+-- This is relative-day bucketing only and does not represent calendar weeks.
 --
--- Done when: date_key and relative_day are unique/non-null; every known event day has one match;
---    unknown dates stay nullable.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+-- timing_group calculation:
+--   'Pre-Presentation' for relative_day < 0
+--   'Presentation Period' for relative_day >= 0
+-- No finer-grained timing groups are defined because no business rules
+-- for those boundaries have been supplied.
+--
+-- Missing source dates are not converted to day 0.
+-- NULL source dates remain unknown and are excluded from this lookup.
+-- No actual calendar dates, months, or years are generated.
+
+with assessment_dates as (
+
+    select
+        cast(date as integer) as relative_day
+
+    from {{ source('oulad_silver', 'assessment_clean') }}
+
+),
+
+student_assessment_dates as (
+
+    select
+        cast(date_submitted as integer) as relative_day
+
+    from {{ source('oulad_silver', 'student_assessment_clean') }}
+
+),
+
+vle_dates as (
+
+    select
+        cast(date as integer) as relative_day
+
+    from {{ source('oulad_silver', 'student_vle_clean') }}
+
+),
+
+registration_dates as (
+
+    select
+        cast(date_registration as integer) as relative_day
+
+    from {{ source('oulad_silver', 'student_registration_clean') }}
+
+),
+
+unregistration_dates as (
+
+    select
+        cast(date_unregistration as integer) as relative_day
+
+    from {{ source('oulad_silver', 'student_registration_clean') }}
+
+),
+
+all_dates as (
+
+    select relative_day
+    from assessment_dates
+
+    union
+
+    select relative_day
+    from student_assessment_dates
+
+    union
+
+    select relative_day
+    from vle_dates
+
+    union
+
+    select relative_day
+    from registration_dates
+
+    union
+
+    select relative_day
+    from unregistration_dates
+
+),
+
+distinct_days as (
+
+    select distinct
+        relative_day
+
+    from all_dates
+
+    where relative_day is not null
+
+)
+
+select
+    md5(cast(relative_day as string)) as date_key,
+    relative_day,
+    cast(floor(relative_day / 7.0) as integer) as relative_week,
+
+    case
+        when relative_day < 0 then true
+        else false
+    end as is_before_presentation,
+
+    case
+        when relative_day < 0 then 'Pre-Presentation'
+        else 'Presentation Period'
+    end as timing_group,
+
+    current_timestamp() as mart_load_timestamp,
+    current_date() as mart_load_date
+
+from distinct_days

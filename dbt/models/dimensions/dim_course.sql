@@ -1,26 +1,29 @@
-{{ config(enabled=false) }}
+{{ config(enabled=true) }}
 
--- File: dim_course.sql
--- Suggested branch: feature/build-dimensions
--- Purpose: Identify each module once for course-level reporting.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: Silver courses_clean.
+-- dbt/models/dimensions/dim_course.sql
+-- Grain: one row per distinct code_module, across all presentations
+-- Source: open_university.oulad_silver.courses_clean
+-- Key method: md5 of code_module
 -- Output: open_university.oulad_gold.dim_course
--- Grain / business key: One row per code_module, across all presentations.
 --
--- What to put in this file:
--- 1. Write a dbt SELECT with named CTEs, source() for Silver inputs and ref() for other Gold models;
---    dbt manages the target relation.
--- 2. Select distinct code_module values and expose a stable course_key.
--- 3. Keep course_key, code_module and audit fields.
--- 4. Keep presentation code/length in dim_module_presentation. Module names are not supplied, so do not
---    invent them.
--- 5. Use consistent, repeatable dimension keys and mart_load_timestamp/mart_load_date audit fields; do
---    not regenerate keys in a different order on reruns.
--- 6. Remove enabled=false only when this model and its dependencies are implemented; add
---    documentation/tests in the adjacent YAML.
---
--- This file is one of the five required dimensions.
---
--- Done when: course_key and code_module are unique/non-null, with one row per distinct Silver module.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+-- Note on is_valid_key: no filter needed. courses_clean.sql only merges
+-- is_valid_key = TRUE rows; invalid keys are quarantined upstream.
+-- Note: is_valid_length not applicable — this model does not select
+-- module_presentation_length (that belongs to dim_module_presentation).
+
+with source_courses as (
+
+    select distinct
+        code_module
+
+    from {{ source('oulad_silver', 'courses_clean') }}
+
+)
+
+select
+    md5(code_module)      as course_key,
+    code_module,
+    current_timestamp()   as mart_load_timestamp,
+    current_date()        as mart_load_date
+
+from source_courses

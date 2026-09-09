@@ -174,3 +174,30 @@ LEFT JOIN open_university.oulad_silver.student_info_clean AS si
     AND sr.id_student = si.id_student
 
 WHERE si.id_student IS NULL;
+
+-- VLE relationships
+SELECT 'vle_to_courses' AS relationship_name, COUNT(*) AS orphan_rows,
+       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
+FROM open_university.oulad_silver.vle_clean v
+LEFT JOIN open_university.oulad_silver.courses_clean c
+  ON v.code_module = c.code_module
+ AND v.code_presentation = c.code_presentation
+WHERE c.code_module IS NULL;
+
+SELECT 'student_vle_to_vle' AS relationship_name, COUNT(*) AS orphan_rows,
+       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
+FROM open_university.oulad_silver.student_vle_clean sv
+LEFT JOIN open_university.oulad_silver.vle_clean v
+  ON sv.code_module = v.code_module
+ AND sv.code_presentation = v.code_presentation
+ AND sv.id_site = v.id_site
+WHERE v.id_site IS NULL;
+
+SELECT 'student_vle_to_enrollment' AS relationship_name, COUNT(*) AS orphan_rows,
+       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
+FROM open_university.oulad_silver.student_vle_clean sv
+LEFT JOIN open_university.oulad_silver.student_info_clean si
+  ON sv.code_module = si.code_module
+ AND sv.code_presentation = si.code_presentation
+ AND sv.id_student = si.id_student
+WHERE si.id_student IS NULL;

@@ -430,3 +430,33 @@ ORDER BY
     table_name,
     check_name,
     column_or_key;
+
+-- VLE business keys
+SELECT 'vle_clean_null_keys' AS check_name, COUNT(*) AS invalid_rows,
+       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
+FROM open_university.oulad_silver.vle_clean
+WHERE code_module IS NULL OR code_presentation IS NULL OR id_site IS NULL;
+
+SELECT 'vle_clean_duplicate_keys' AS check_name, COUNT(*) AS duplicate_keys,
+       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
+FROM (
+  SELECT code_module, code_presentation, id_site
+  FROM open_university.oulad_silver.vle_clean
+  GROUP BY code_module, code_presentation, id_site
+  HAVING COUNT(*) > 1
+);
+
+SELECT 'student_vle_clean_null_keys' AS check_name, COUNT(*) AS invalid_rows,
+       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
+FROM open_university.oulad_silver.student_vle_clean
+WHERE code_module IS NULL OR code_presentation IS NULL OR id_student IS NULL
+   OR id_site IS NULL OR date IS NULL;
+
+SELECT 'student_vle_clean_duplicate_keys' AS check_name, COUNT(*) AS duplicate_keys,
+       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
+FROM (
+  SELECT code_module, code_presentation, id_student, id_site, date
+  FROM open_university.oulad_silver.student_vle_clean
+  GROUP BY code_module, code_presentation, id_student, id_site, date
+  HAVING COUNT(*) > 1
+);

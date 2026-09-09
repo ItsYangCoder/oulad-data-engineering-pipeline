@@ -515,3 +515,19 @@ FROM open_university.oulad_silver.student_info_clean
 
 WHERE studied_credits IS NULL
    OR studied_credits < 0;
+
+-- VLE value checks
+SELECT 'vle_invalid_week_ranges' AS check_name, COUNT(*) AS invalid_rows,
+       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
+FROM open_university.oulad_silver.vle_clean
+WHERE is_valid_week_range = FALSE;
+
+SELECT 'vle_invalid_course_parents' AS check_name, COUNT(*) AS invalid_rows,
+       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
+FROM open_university.oulad_silver.vle_clean
+WHERE is_valid_parent = FALSE OR is_valid_parent IS NULL;
+
+SELECT 'student_vle_negative_clicks' AS check_name, COUNT(*) AS invalid_rows,
+       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
+FROM open_university.oulad_silver.student_vle_clean
+WHERE sum_click < 0;

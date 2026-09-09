@@ -18,13 +18,6 @@ CREATE TABLE IF NOT EXISTS open_university.oulad_silver.student_assessment_clean
 )
 USING DELTA;
 
--- Validate required composite business keys before MERGE.
--- Invalid keys are reported and excluded from the load below.
-SELECT COUNT(*) AS invalid_student_assessment_keys
-FROM open_university.oulad_bronze.student_assessment_raw
-WHERE TRY_CAST(id_assessment AS BIGINT) IS NULL
-   OR TRY_CAST(id_student AS BIGINT) IS NULL;
-
 MERGE INTO open_university.oulad_silver.student_assessment_clean AS target
 USING (
     SELECT
@@ -56,7 +49,7 @@ USING (
 
             CASE
                 WHEN score IS NULL
-                     OR UPPER(TRIM(score)) IN ('?', '', 'NA', 'N/A', 'NULL')
+                     OR UPPER(TRIM(CAST(score AS STRING))) IN ('?', '', 'NA', 'N/A', 'NULL')
                 THEN NULL
                 ELSE TRY_CAST(score AS DECIMAL(5,2))
             END AS cleaned_score

@@ -1,27 +1,31 @@
-{{ config(enabled=false) }}
+{{ config(enabled=true) }}
 
--- File: dim_student.sql
--- Suggested branch: feature/build-dimensions
--- Purpose: Identify each student once across all their module enrollments.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: Silver student_info_clean, via source('oulad_silver', 'student_info_clean').
+-- dbt/models/dimensions/dim_student.sql
+-- Grain: one row per id_student
+-- Source: open_university.oulad_silver.student_info_clean
+-- Key method: md5 of id_student
 -- Output: open_university.oulad_gold.dim_student
--- Grain / business key: One row per id_student.
 --
--- What to put in this file:
--- 1. Write a dbt SELECT with named CTEs, source() for Silver inputs and ref() for other Gold models;
---    dbt manages the target relation.
--- 2. Select distinct non-null id_student values and expose a stable student_key.
--- 3. Keep only student identity and audit fields at this grain.
--- 4. Do not take an arbitrary enrollment's final_result, studied_credits, attempts or demographic
---    profile as a permanent student attribute; these can depend on the enrollment.
--- 5. Use consistent, repeatable dimension keys and mart_load_timestamp/mart_load_date audit fields; do
---    not regenerate keys in a different order on reruns.
--- 6. Remove enabled=false only when this model and its dependencies are implemented; add
---    documentation/tests in the adjacent YAML.
---
--- This file is one of the five required dimensions.
---
--- Done when: student_key and id_student are unique/non-null, and every Silver student maps to exactly
---    one dimension row.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+-- Note: only student identity is kept at this grain. Enrollment-dependent
+-- attributes (final_result, studied_credits, num_of_prev_attempts, and
+-- demographic profile) are intentionally excluded — they can vary per
+-- enrollment and belong in fact/outcomes models, not this dimension.
+
+with source_students as (
+
+    select distinct
+        id_student
+
+    from {{ source('oulad_silver', 'student_info_clean') }}
+
+    where id_student is not null
+
+)
+
+select
+    md5(cast(id_student as string)) as student_key,
+    id_student,
+    current_timestamp()             as mart_load_timestamp,
+    current_date()                  as mart_load_date
+
+from source_students

@@ -71,7 +71,57 @@ SELECT
 FROM by_type
 WHERE result_count <> scored_result_count + missing_score_count;
 
--- 4. Average-score calculation must exclude NULL scores.
+-- 4. Assessment analytics coverage must reconcile back to the Gold fact.
+-- This reproduces the analytics grouping at its source and verifies that the
+-- grouped totals still equal the complete fact population and its score coverage.
+WITH grouped_metrics AS (
+    SELECT
+        code_module,
+        code_presentation,
+        assessment_type,
+        COUNT(*) AS result_count,
+        COUNT(score) AS scored_result_count,
+        COUNT(*) - COUNT(score) AS missing_score_count,
+        AVG(score) AS avg_score
+    FROM open_university.oulad_gold.fact_assessments
+    GROUP BY
+        code_module,
+        code_presentation,
+        assessment_type
+),
+reconciled AS (
+    SELECT
+        SUM(result_count) AS grouped_result_count,
+        SUM(scored_result_count) AS grouped_scored_result_count,
+        SUM(missing_score_count) AS grouped_missing_score_count,
+        SUM(result_count) - SUM(scored_result_count) AS recomputed_missing_score_count
+    FROM grouped_metrics
+),
+fact_metrics AS (
+    SELECT
+        COUNT(*) AS fact_result_count,
+        COUNT(score) AS fact_scored_result_count,
+        COUNT(*) - COUNT(score) AS fact_missing_score_count,
+        AVG(score) AS fact_avg_score
+    FROM open_university.oulad_gold.fact_assessments
+)
+SELECT
+    'ANALYTICS_FACT_RECONCILIATION' AS check_name,
+    grouped_result_count,
+    fact_result_count,
+    grouped_scored_result_count,
+    fact_scored_result_count,
+    grouped_missing_score_count,
+    fact_missing_score_count,
+    fact_avg_score
+FROM reconciled
+CROSS JOIN fact_metrics
+WHERE grouped_result_count <> fact_result_count
+   OR grouped_scored_result_count <> fact_scored_result_count
+   OR grouped_missing_score_count <> fact_missing_score_count
+   OR recomputed_missing_score_count <> fact_missing_score_count;
+
+-- 5. Average-score calculation must exclude NULL scores.
 WITH direct_metrics AS (
     SELECT AVG(score) AS expected_avg_score
     FROM open_university.oulad_gold.fact_assessments
@@ -89,7 +139,7 @@ FROM direct_metrics
 CROSS JOIN non_null_metrics
 WHERE ABS(COALESCE(expected_avg_score, 0) - COALESCE(non_null_avg_score, 0)) > 0.0001;
 
--- 5. Scores must remain within the documented 0-100 range; NULL scores are allowed.
+-- 6. Scores must remain within the documented 0-100 range; NULL scores are allowed.
 SELECT
     'SCORE_RANGE' AS check_name,
     COUNT(*) AS failure_count
@@ -98,7 +148,7 @@ WHERE score < 0
    OR score > 100
 HAVING COUNT(*) > 0;
 
--- 6. Lateness rule: only known deadline/submission pairs are eligible;
+-- 7. Lateness rule: only known deadline/submission pairs are eligible;
 --    unknown dates must not be classified as late.
 WITH lateness AS (
     SELECT
@@ -120,7 +170,7 @@ SELECT
 FROM lateness
 WHERE late_count > eligible_count;
 
--- 7. Banked results are reported, not silently excluded.
+-- 8. Banked results are reported, not silently excluded.
 WITH banked AS (
     SELECT
         COUNT(*) AS total_count,
@@ -135,7 +185,7 @@ FROM banked
 WHERE banked_count < 0
    OR banked_count > total_count;
 
--- 8. Assessment weights stay within the documented 0-100 range.
+-- 9. Assessment weights stay within the documented 0-100 range.
 SELECT
     'ASSESSMENT_WEIGHT_RANGE' AS check_name,
     COUNT(*) AS failure_count

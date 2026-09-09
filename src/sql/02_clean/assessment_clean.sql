@@ -1,27 +1,15 @@
--- File: assessment_clean.sql
+-- ============================================================
+-- Silver: Assessment Clean
+-- Source: open_university.oulad_bronze.assessment_raw
+-- Target: open_university.oulad_silver.assessment_clean
+--
+-- Grain: one row per assessment
+-- Business key: id_assessment
+-- ============================================================
 
--- Suggested branch: feature/clean-assessments
-
--- Purpose:
--- Prepare assessment definitions by cleaning text fields,
--- converting data types, and preserving valid missing dates.
-
--- Input:
--- open_university.oulad_bronze.assessment_raw
-
--- Output:
--- open_university.oulad_silver.assessment_clean
-
--- Grain / business key:
--- One row per assessment; id_assessment.
-
--- Expected current batch:
--- 206 rows.
--- 11 assessment dates are intentionally missing and belong to Exam records.
--- Missing dates must remain NULL; they must NOT be removed or replaced with a fake date.
 
 -- ============================================================
--- STEP 1: Create the Silver table if it does not exist.
+-- 1. Create target table if it does not exist
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS open_university.oulad_silver.assessment_clean (
@@ -38,84 +26,175 @@ USING DELTA;
 
 
 -- ============================================================
--- STEP 2: Clean the Bronze data.
+-- 2. Validate required business key
+--
+-- id_assessment is required for the Silver business key.
+-- Expected result: 0
+-- ============================================================
+
+SELECT
+    COUNT(*) AS invalid_assessment_keys
+FROM open_university.oulad_bronze.assessment_raw
+WHERE TRY_CAST(id_assessment AS BIGINT) IS NULL;
+
+
+-- ============================================================
+-- 3. Prepare cleaned source and load into Silver
 -- ============================================================
 
 MERGE INTO open_university.oulad_silver.assessment_clean AS target
 
 USING (
 
-    WITH cleaned AS (
+    SELECT
+        normalized_code_module AS code_module,
+        normalized_code_presentation AS code_presentation,
+        cleaned_id_assessment AS id_assessment,
+        normalized_assessment_type AS assessment_type,
+        cleaned_date AS date,
+        cleaned_weight AS weight,
+        current_timestamp() AS clean_load_timestamp,
+        current_date() AS clean_load_date
+
+    FROM (
 
         SELECT
-            -- TRIM removes unnecessary spaces from text values.
-            TRIM(code_module) AS code_module,
 
-            TRIM(code_presentation) AS code_presentation,
+            -- ------------------------------------------------
+            -- code_module
+            -- Normalize placeholders to SQL NULL
+            -- ------------------------------------------------
 
-            -- Convert the assessment ID from INT to BIGINT.
-            -- TRY_CAST prevents the entire query from failing
-            -- if an unexpected non-numeric value appears.
-            TRY_CAST(id_assessment AS BIGINT) AS id_assessment,
-
-            -- Standardize assessment type.
-            -- TMA and CMA remain uppercase.
-            -- Exam is standardized to "Exam".
             CASE
-                WHEN UPPER(TRIM(assessment_type)) = 'TMA'
-                    THEN 'TMA'
+                WHEN code_module IS NULL
+                     OR TRIM(code_module) IN (
+                        '?',
+                        '',
+                        'NA',
+                        'N/A',
+                        'NULL'
+                     )
+                THEN NULL
+                ELSE TRIM(code_module)
+            END AS normalized_code_module,
 
-                WHEN UPPER(TRIM(assessment_type)) = 'CMA'
-                    THEN 'CMA'
 
-                WHEN UPPER(TRIM(assessment_type)) = 'EXAM'
-                    THEN 'Exam'
+            -- ------------------------------------------------
+            -- code_presentation
+            -- Normalize placeholders to SQL NULL
+            -- ------------------------------------------------
 
-                ELSE NULL
-            END AS assessment_type,
+            CASE
+                WHEN code_presentation IS NULL
+                     OR TRIM(code_presentation) IN (
+                        '?',
+                        '',
+                        'NA',
+                        'N/A',
+                        'NULL'
+                     )
+                THEN NULL
+                ELSE TRIM(code_presentation)
+            END AS normalized_code_presentation,
 
-            -- The Bronze date column is STRING.
+
+            -- ------------------------------------------------
+            -- id_assessment
+            -- Required business key
+            -- ------------------------------------------------
+
+            TRY_CAST(id_assessment AS BIGINT)
+                AS cleaned_id_assessment,
+
+
+            -- ------------------------------------------------
+            -- assessment_type
+            -- Normalize placeholders to SQL NULL
+            -- ------------------------------------------------
+
+            CASE
+                WHEN assessment_type IS NULL
+                     OR TRIM(assessment_type) IN (
+                        '?',
+                        '',
+                        'NA',
+                        'N/A',
+                        'NULL'
+                     )
+                THEN NULL
+                ELSE TRIM(assessment_type)
+            END AS normalized_assessment_type,
+
+
+            -- ------------------------------------------------
+            -- date
+            -- Normalize placeholders before casting
             --
-            -- NULLIF converts a blank string into SQL NULL.
-            -- TRY_CAST then converts the remaining value to INT.
-            --
-            -- Missing assessment dates are preserved as NULL.
-            TRY_CAST(
-                NULLIF(TRIM(date), '')
-                AS INT
-            ) AS date,
+            -- Expected:
+            -- 11 missing Exam dates remain NULL
+            -- ------------------------------------------------
 
-            -- Convert weight from DOUBLE to DECIMAL.
-            TRY_CAST(weight AS DECIMAL(5,2)) AS weight
+            CASE
+                WHEN date IS NULL
+                     OR TRIM(date) IN (
+                        '?',
+                        '',
+                        'NA',
+                        'N/A',
+                        'NULL'
+                     )
+                THEN NULL
+                ELSE TRY_CAST(date AS INT)
+            END AS cleaned_date,
+
+
+            -- ------------------------------------------------
+            -- weight
+            -- Normalize placeholders before casting
+            -- ------------------------------------------------
+
+            CASE
+                WHEN weight IS NULL
+                     OR TRIM(CAST(weight AS STRING)) IN (
+                        '?',
+                        '',
+                        'NA',
+                        'N/A',
+                        'NULL'
+                     )
+                THEN NULL
+                ELSE TRY_CAST(weight AS DECIMAL(5,2))
+            END AS cleaned_weight
+
 
         FROM open_university.oulad_bronze.assessment_raw
-    )
 
-    SELECT
-        code_module,
-        code_presentation,
-        id_assessment,
-        assessment_type,
-        date,
-        weight,
+    ) prepared
 
-        -- Audit timestamp:
-        -- records when the clean record was loaded.
-        CURRENT_TIMESTAMP() AS clean_load_timestamp,
 
-        -- Audit date:
-        -- records the calendar date when the clean record was loaded.
-        CURRENT_DATE() AS clean_load_date
+    -- --------------------------------------------------------
+    -- Required business-key protection
+    --
+    -- Invalid id_assessment values are excluded from MERGE.
+    -- They are separately reported by the validation query above.
+    -- --------------------------------------------------------
 
-    FROM cleaned
+    WHERE cleaned_id_assessment IS NOT NULL
 
 ) AS source
 
--- Use the complete business key to identify
--- the same assessment during repeated loads.
+
+-- ============================================================
+-- 4. Match using business key
+-- ============================================================
+
 ON target.id_assessment = source.id_assessment
 
--- If the assessment already exists, update it.
+
+-- ============================================================
+-- 5. Update existing records
+-- ============================================================
+
 WHEN MATCHED THEN UPDATE SET
     target.code_module = source.code_module,
     target.code_presentation = source.code_presentation,
@@ -125,7 +204,11 @@ WHEN MATCHED THEN UPDATE SET
     target.clean_load_timestamp = source.clean_load_timestamp,
     target.clean_load_date = source.clean_load_date
 
--- If the assessment does not exist, insert it.
+
+-- ============================================================
+-- 6. Insert new records
+-- ============================================================
+
 WHEN NOT MATCHED THEN INSERT (
     code_module,
     code_presentation,
@@ -136,6 +219,7 @@ WHEN NOT MATCHED THEN INSERT (
     clean_load_timestamp,
     clean_load_date
 )
+
 VALUES (
     source.code_module,
     source.code_presentation,
@@ -146,3 +230,4 @@ VALUES (
     source.clean_load_timestamp,
     source.clean_load_date
 );
+

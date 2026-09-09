@@ -23,161 +23,302 @@
 -- Read: docs/pipeline_plan.md and docs/assumptions.md.
 
 
--- --------------------------------------------------------------------------------------------------------
--- 1. Required key-component checks
--- --------------------------------------------------------------------------------------------------------
-SELECT 'vle_clean' AS table_name,
-       'missing_or_blank_code_module' AS check_name,
-       COUNT(*) AS failure_count
+-- File: 02_silver_key_checks.sql
+-- Purpose: Validate required and unique business keys for vle_clean and student_vle_clean.
+-- Input:
+--   open_university.oulad_silver.vle_clean
+--   open_university.oulad_silver.student_vle_clean
+-- Output: Read-only validation queries only; no data changes.
+--
+-- Expected:
+--   No missing/blank required business-key components
+--   No repeated full business keys
+
+-- =============================================================================
+-- SECTION A: VLE_CLEAN KEY CHECKS
+-- =============================================================================
+
+-- File: 02_silver_key_checks_vle.sql
+-- Purpose: Validate required and unique business keys for vle_clean.
+-- Input: open_university.oulad_silver.vle_clean
+-- Output: Read-only validation queries only; no data changes.
+--
+-- Business key:
+--   (code_module, code_presentation, id_site)
+--
+-- Expected:
+--   0 missing/blank key components
+--   0 repeated full business keys
+
+
+-- =============================================================================
+-- 1. SUMMARY: MISSING / BLANK BUSINESS KEY COMPONENTS
+-- Expected: all failure_rows = 0
+-- =============================================================================
+
+SELECT 'code_module is NULL' AS check_name, COUNT(*) AS failure_rows
 FROM open_university.oulad_silver.vle_clean
-WHERE code_module IS NULL OR TRIM(code_module) = ''
+WHERE code_module IS NULL
 
 UNION ALL
 
-SELECT 'vle_clean',
-       'missing_or_blank_code_presentation',
-       COUNT(*)
+SELECT 'code_module is blank' AS check_name, COUNT(*) AS failure_rows
 FROM open_university.oulad_silver.vle_clean
-WHERE code_presentation IS NULL OR TRIM(code_presentation) = ''
+WHERE code_module IS NOT NULL
+  AND TRIM(code_module) = ''
 
 UNION ALL
 
-SELECT 'vle_clean',
-       'missing_id_site',
-       COUNT(*)
+SELECT 'code_presentation is NULL' AS check_name, COUNT(*) AS failure_rows
 FROM open_university.oulad_silver.vle_clean
-WHERE id_site IS NULL
+WHERE code_presentation IS NULL
 
 UNION ALL
 
-SELECT 'student_vle_clean',
-       'missing_or_blank_code_module',
-       COUNT(*)
+SELECT 'code_presentation is blank' AS check_name, COUNT(*) AS failure_rows
+FROM open_university.oulad_silver.vle_clean
+WHERE code_presentation IS NOT NULL
+  AND TRIM(code_presentation) = ''
+
+UNION ALL
+
+SELECT 'id_site is NULL' AS check_name, COUNT(*) AS failure_rows
+FROM open_university.oulad_silver.vle_clean
+WHERE id_site IS NULL;
+
+
+-- =============================================================================
+-- 2. DETAILS: ROWS WITH MISSING / BLANK BUSINESS KEY COMPONENTS
+-- Expected: 0 rows
+-- =============================================================================
+
+SELECT *
+FROM open_university.oulad_silver.vle_clean
+WHERE code_module IS NULL
+   OR TRIM(code_module) = ''
+   OR code_presentation IS NULL
+   OR TRIM(code_presentation) = ''
+   OR id_site IS NULL
+ORDER BY code_module, code_presentation, id_site;
+
+
+-- =============================================================================
+-- 3. SUMMARY: DUPLICATE FULL BUSINESS KEYS
+-- Expected: duplicate_key_groups = 0
+-- =============================================================================
+
+SELECT COUNT(*) AS duplicate_key_groups
+FROM (
+    SELECT
+        code_module,
+        code_presentation,
+        id_site
+    FROM open_university.oulad_silver.vle_clean
+    GROUP BY
+        code_module,
+        code_presentation,
+        id_site
+    HAVING COUNT(*) > 1
+) d;
+
+
+-- =============================================================================
+-- 4. DETAILS: DUPLICATE FULL BUSINESS KEYS
+-- Expected: 0 rows
+-- =============================================================================
+
+SELECT
+    code_module,
+    code_presentation,
+    id_site,
+    COUNT(*) AS row_count
+FROM open_university.oulad_silver.vle_clean
+GROUP BY
+    code_module,
+    code_presentation,
+    id_site
+HAVING COUNT(*) > 1
+ORDER BY row_count DESC, code_module, code_presentation, id_site;
+
+
+-- =============================================================================
+-- 5. OPTIONAL HIGH-LEVEL UNIQUENESS CHECK
+-- Expected for current batch:
+--   total_rows = 6364
+--   distinct_business_keys = 6364
+-- =============================================================================
+
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(
+        DISTINCT STRUCT(
+            code_module,
+            code_presentation,
+            id_site
+        )
+    ) AS distinct_business_keys
+FROM open_university.oulad_silver.vle_clean;
+
+
+-- =============================================================================
+-- SECTION B: STUDENT_VLE_CLEAN KEY CHECKS
+-- =============================================================================
+
+-- File: 02_silver_key_checks_student_vle.sql
+-- Purpose: Validate required and unique business keys for student_vle_clean.
+-- Input: open_university.oulad_silver.student_vle_clean
+-- Output: Read-only validation queries only; no data changes.
+--
+-- Business key:
+--   (code_module, code_presentation, id_student, id_site, date)
+--
+-- Note:
+--   Negative date values are valid relative days and must not be treated as bad keys.
+--
+-- Expected:
+--   0 missing/blank key components
+--   0 repeated full business keys
+
+
+-- =============================================================================
+-- 1. SUMMARY: MISSING / BLANK BUSINESS KEY COMPONENTS
+-- Expected: all failure_rows = 0
+-- =============================================================================
+
+SELECT 'code_module is NULL' AS check_name, COUNT(*) AS failure_rows
 FROM open_university.oulad_silver.student_vle_clean
-WHERE code_module IS NULL OR TRIM(code_module) = ''
+WHERE code_module IS NULL
 
 UNION ALL
 
-SELECT 'student_vle_clean',
-       'missing_or_blank_code_presentation',
-       COUNT(*)
+SELECT 'code_module is blank' AS check_name, COUNT(*) AS failure_rows
 FROM open_university.oulad_silver.student_vle_clean
-WHERE code_presentation IS NULL OR TRIM(code_presentation) = ''
+WHERE code_module IS NOT NULL
+  AND TRIM(code_module) = ''
 
 UNION ALL
 
-SELECT 'student_vle_clean',
-       'missing_id_student',
-       COUNT(*)
+SELECT 'code_presentation is NULL' AS check_name, COUNT(*) AS failure_rows
+FROM open_university.oulad_silver.student_vle_clean
+WHERE code_presentation IS NULL
+
+UNION ALL
+
+SELECT 'code_presentation is blank' AS check_name, COUNT(*) AS failure_rows
+FROM open_university.oulad_silver.student_vle_clean
+WHERE code_presentation IS NOT NULL
+  AND TRIM(code_presentation) = ''
+
+UNION ALL
+
+SELECT 'id_student is NULL' AS check_name, COUNT(*) AS failure_rows
 FROM open_university.oulad_silver.student_vle_clean
 WHERE id_student IS NULL
 
 UNION ALL
 
-SELECT 'student_vle_clean',
-       'missing_id_site',
-       COUNT(*)
+SELECT 'id_site is NULL' AS check_name, COUNT(*) AS failure_rows
 FROM open_university.oulad_silver.student_vle_clean
 WHERE id_site IS NULL
 
 UNION ALL
 
-SELECT 'student_vle_clean',
-       'missing_date',
-       COUNT(*)
+SELECT 'date is NULL' AS check_name, COUNT(*) AS failure_rows
 FROM open_university.oulad_silver.student_vle_clean
 WHERE date IS NULL;
 
--- --------------------------------------------------------------------------------------------------------
--- 2. Duplicate-key summary
--- duplicate_groups counts repeated business keys. duplicate_excess_rows counts rows beyond the one
--- permitted row per key. Both metrics must be 0.
--- --------------------------------------------------------------------------------------------------------
-WITH vle_duplicate_keys AS (
-  SELECT
+
+-- =============================================================================
+-- 2. DETAILS: ROWS WITH MISSING / BLANK BUSINESS KEY COMPONENTS
+-- Expected: 0 rows
+-- =============================================================================
+
+SELECT *
+FROM open_university.oulad_silver.student_vle_clean
+WHERE code_module IS NULL
+   OR TRIM(code_module) = ''
+   OR code_presentation IS NULL
+   OR TRIM(code_presentation) = ''
+   OR id_student IS NULL
+   OR id_site IS NULL
+   OR date IS NULL
+ORDER BY
     code_module,
     code_presentation,
+    id_student,
     id_site,
-    COUNT(*) AS rows_for_key
-  FROM open_university.oulad_silver.vle_clean
-  GROUP BY code_module, code_presentation, id_site
-  HAVING COUNT(*) > 1
-),
+    date;
 
-student_vle_duplicate_keys AS (
-  SELECT
+
+-- =============================================================================
+-- 3. SUMMARY: DUPLICATE FULL BUSINESS KEYS
+-- Expected: duplicate_key_groups = 0
+-- =============================================================================
+
+SELECT COUNT(*) AS duplicate_key_groups
+FROM (
+    SELECT
+        code_module,
+        code_presentation,
+        id_student,
+        id_site,
+        date
+    FROM open_university.oulad_silver.student_vle_clean
+    GROUP BY
+        code_module,
+        code_presentation,
+        id_student,
+        id_site,
+        date
+    HAVING COUNT(*) > 1
+) d;
+
+
+-- =============================================================================
+-- 4. DETAILS: DUPLICATE FULL BUSINESS KEYS
+-- Expected: 0 rows
+-- =============================================================================
+
+SELECT
     code_module,
     code_presentation,
     id_student,
     id_site,
     date,
-    COUNT(*) AS rows_for_key
-  FROM open_university.oulad_silver.student_vle_clean
-  GROUP BY code_module, code_presentation, id_student, id_site, date
-  HAVING COUNT(*) > 1
-)
-
-SELECT
-  'vle_clean' AS table_name,
-  COUNT(*) AS duplicate_groups,
-  COALESCE(SUM(rows_for_key - 1), 0) AS duplicate_excess_rows
-FROM vle_duplicate_keys
-
-UNION ALL
-
-SELECT
-  'student_vle_clean',
-  COUNT(*),
-  COALESCE(SUM(rows_for_key - 1), 0)
-FROM student_vle_duplicate_keys;
-
--- --------------------------------------------------------------------------------------------------------
--- 3. VLE resource duplicate-key details
--- Expected result: no rows.
--- --------------------------------------------------------------------------------------------------------
-SELECT
-  code_module,
-  code_presentation,
-  id_site,
-  COUNT(*) AS rows_for_key
-FROM open_university.oulad_silver.vle_clean
-GROUP BY code_module, code_presentation, id_site
-HAVING COUNT(*) > 1
-ORDER BY rows_for_key DESC, code_module, code_presentation, id_site;
-
--- --------------------------------------------------------------------------------------------------------
--- 4. Student VLE daily duplicate-key details
--- Expected result: no rows.
--- --------------------------------------------------------------------------------------------------------
-SELECT
-  code_module,
-  code_presentation,
-  id_student,
-  id_site,
-  date,
-  COUNT(*) AS rows_for_key
+    COUNT(*) AS row_count
 FROM open_university.oulad_silver.student_vle_clean
-GROUP BY code_module, code_presentation, id_student, id_site, date
+GROUP BY
+    code_module,
+    code_presentation,
+    id_student,
+    id_site,
+    date
 HAVING COUNT(*) > 1
-ORDER BY rows_for_key DESC, code_module, code_presentation, id_student, id_site, date;
+ORDER BY
+    row_count DESC,
+    code_module,
+    code_presentation,
+    id_student,
+    id_site,
+    date;
 
--- --------------------------------------------------------------------------------------------------------
--- 5. Rejected Bronze records caused by invalid required key values
--- Expected result for the documented current batch: no rows.
--- --------------------------------------------------------------------------------------------------------
+
+-- =============================================================================
+-- 5. OPTIONAL HIGH-LEVEL UNIQUENESS CHECK
+-- Expected for current batch:
+--   total_rows = 8459320
+--   distinct_business_keys = 8459320
+-- =============================================================================
+
 SELECT
-  rejection_reason,
-  COUNT(*) AS rejected_rows
-FROM open_university.oulad_silver.student_vle_rejected
-WHERE rejection_reason IN (
-  'MISSING_CODE_MODULE',
-  'MISSING_CODE_PRESENTATION',
-  'MISSING_ID_STUDENT',
-  'INVALID_ID_STUDENT',
-  'MISSING_ID_SITE',
-  'INVALID_ID_SITE',
-  'MISSING_DATE',
-  'INVALID_DATE'
-)
-GROUP BY rejection_reason
-ORDER BY rejection_reason;
+    COUNT(*) AS total_rows,
+    COUNT(
+        DISTINCT STRUCT(
+            code_module,
+            code_presentation,
+            id_student,
+            id_site,
+            date
+        )
+    ) AS distinct_business_keys
+FROM open_university.oulad_silver.student_vle_clean;

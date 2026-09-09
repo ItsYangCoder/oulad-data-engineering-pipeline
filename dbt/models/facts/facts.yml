@@ -48,7 +48,7 @@ models:
               to: ref('dim_date')
               field: date_key
       - name: demographics_key
-        description: "Foreign key to the enrollment-level demographic profile."
+        description: "Foreign key to the enrollment-level demographic profile; nullable when no matching enrollment profile exists."
         tests:
           - relationships:
               to: ref('dim_demographics')
@@ -65,12 +65,22 @@ models:
         description: "Assessment weight."
         tests:
           - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
       - name: score
         description: "Student assessment score; expected NULL values are retained."
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
       - name: is_banked
         description: "OULAD banked-result flag."
         tests:
           - not_null
+          - accepted_values:
+              values: [0, 1]
       - name: mart_load_timestamp
         description: "Timestamp when the Gold fact was loaded."
         tests:

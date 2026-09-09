@@ -9,13 +9,11 @@
 --   student_registration_clean.date_registration
 --   student_registration_clean.date_unregistration
 -- Key method: md5 of relative_day cast to string
--- Output: open_university.oulad_gold.dim_date
---
+-- Result: open_university.oulad_gold.dim_date
 -- OULAD dates are relative day offsets from the module presentation start.
 -- Day 0 means presentation start.
 -- Negative values represent days before presentation start.
 -- Positive values represent days after presentation start.
---
 -- relative_week calculation:
 -- floor(relative_day / 7.0)
 --   days 0 to 6    = week 0
@@ -23,13 +21,11 @@
 --   days -1 to -7  = week -1
 --   days -8 to -14 = week -2
 -- This is relative-day bucketing only and does not represent calendar weeks.
---
 -- timing_group calculation:
 --   'Pre-Presentation' for relative_day < 0
 --   'Presentation Period' for relative_day >= 0
 -- No finer-grained timing groups are defined because no business rules
 -- for those boundaries have been supplied.
---
 -- Missing source dates are not converted to day 0.
 -- NULL source dates remain unknown and are excluded from this lookup.
 -- No actual calendar dates, months, or years are generated.

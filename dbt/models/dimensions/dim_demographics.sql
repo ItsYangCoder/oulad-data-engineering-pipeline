@@ -8,8 +8,7 @@
 -- placeholder token before hashing (same pattern used in courses_clean.sql's
 -- quarantine_id generation) so two enrollments with an identical NULL imd_band
 -- resolve to the same demographics_key rather than two different keys.
--- Output: open_university.oulad_gold.dim_demographics
---
+-- Result: open_university.oulad_gold.dim_demographics
 -- Note: NULL imd_band is preserved as-is in the stored profile (requirement #4);
 -- only the key generation coalesces NULLs to a placeholder, the actual column
 -- values are not modified. Reporting layers may choose to display "Unknown"

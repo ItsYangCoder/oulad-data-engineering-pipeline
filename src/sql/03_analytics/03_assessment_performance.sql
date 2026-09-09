@@ -1,10 +1,7 @@
--- File: 03_assessment_performance.sql
--- Suggested branch: feature/assessment-analysis
 -- Purpose: Summarize assessment performance, score coverage and submission patterns.
 -- Input: open_university.oulad_gold.fact_assessments.
--- Output: Read-only result set for Metabase; no CREATE, MERGE, INSERT or table rebuild.
+-- Result: Read-only result set for Metabase; no CREATE, MERGE, INSERT or table rebuild.
 -- Grain / business key: One output row per module-presentation and assessment type.
---
 -- Metric definitions / business rules:
 -- * result_count = all assessment-result rows, including rows with a missing score.
 -- * scored_result_count = COUNT(score); NULL scores are excluded from score metrics.
@@ -24,7 +21,7 @@
 --   results because no banked-result exclusion rule is documented.
 
 WITH fact_results AS (
-    -- Gold source function:
+    -- Read the Gold fact table.
     -- Reads the validated fact table as the single source of truth for
     -- assessment analytics. No source data is modified in this layer.
     SELECT
@@ -42,7 +39,7 @@ WITH fact_results AS (
 ),
 
 assessment_performance AS (
-    -- Aggregation function:
+    -- Group the records and calculate the totals.
     -- Groups results by module, presentation and assessment type, then
     -- calculates coverage, score and submission-behavior metrics.
     -- COUNT(*) keeps all result rows, while COUNT(score) excludes NULL scores.
@@ -81,7 +78,7 @@ assessment_performance AS (
         assessment_type
 )
 
--- Reporting function:
+-- Return the final report.
 -- Returns the analytics-ready metrics for dashboarding and interpretation.
 -- The late-result rate uses only records with known submission and assessment
 -- dates. Unknown dates remain outside the rate instead of being classified as late.
@@ -98,7 +95,7 @@ SELECT
     lateness_eligible_count,
     late_result_count,
     CASE
-        -- Rate function: avoids division by zero when no date pair is eligible.
+        -- avoids division by zero when no date pair is eligible.
         WHEN lateness_eligible_count = 0 THEN NULL
         ELSE late_result_count * 100.0 / lateness_eligible_count
     END AS late_result_rate_pct
@@ -106,7 +103,7 @@ FROM assessment_performance
 ORDER BY
     code_module,
     code_presentation,
-    -- Display function: keeps assessment types in a consistent business order.
+    -- keeps assessment types in a consistent business order.
     CASE assessment_type
         WHEN 'Exam' THEN 1
         WHEN 'TMA' THEN 2

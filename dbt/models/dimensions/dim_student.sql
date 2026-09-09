@@ -4,8 +4,7 @@
 -- Grain: one row per id_student
 -- Source: open_university.oulad_silver.student_info_clean
 -- Key method: md5 of id_student
--- Output: open_university.oulad_gold.dim_student
---
+-- Result: open_university.oulad_gold.dim_student
 -- Note: only student identity is kept at this grain. Enrollment-dependent
 -- attributes (final_result, studied_credits, num_of_prev_attempts, and
 -- demographic profile) are intentionally excluded — they can vary per

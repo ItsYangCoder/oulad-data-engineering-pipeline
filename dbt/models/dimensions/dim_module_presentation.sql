@@ -5,7 +5,6 @@
 -- Source: open_university.oulad_silver.courses_clean, ref('dim_course')
 -- Key method: md5 of code_module + delimiter + code_presentation
 -- Expected current-batch rows: 22
---
 -- Note on is_valid_key: no filter needed. courses_clean.sql only merges
 -- is_valid_key = TRUE rows; invalid keys are quarantined upstream.
 -- Note: is_valid_length intentionally excluded from output per requirement #2

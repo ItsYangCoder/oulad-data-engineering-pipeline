@@ -42,14 +42,14 @@ USING (
                 WHEN code_module IS NULL
                      OR UPPER(TRIM(code_module)) IN ('?', '', 'NA', 'N/A', 'NULL')
                 THEN NULL
-                ELSE TRIM(code_module)
+                ELSE UPPER(TRIM(code_module))
             END AS normalized_code_module,
 
             CASE
                 WHEN code_presentation IS NULL
                      OR UPPER(TRIM(code_presentation)) IN ('?', '', 'NA', 'N/A', 'NULL')
                 THEN NULL
-                ELSE TRIM(code_presentation)
+                ELSE UPPER(TRIM(code_presentation))
             END AS normalized_code_presentation,
 
             TRY_CAST(id_assessment AS BIGINT) AS cleaned_id_assessment,

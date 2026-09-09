@@ -1,19 +1,37 @@
 {{ config(enabled=true) }}
 
-with source_results as (
+with assessment_context as (
     select
         id_assessment,
-        id_student,
+        code_module,
+        code_presentation
+    from {{ source('oulad_silver', 'assessment_clean') }}
+),
+
+source_results as (
+    select
+        a.code_module,
+        a.code_presentation,
+        r.id_assessment,
+        r.id_student,
         count(*) as result_count,
-        count(score) as scored_count,
-        count(*) - count(score) as null_score_count,
-        coalesce(sum(score), 0) as score_sum
-    from {{ source('oulad_silver', 'student_assessment_clean') }}
-    group by id_assessment, id_student
+        count(r.score) as scored_count,
+        count(*) - count(r.score) as null_score_count,
+        coalesce(sum(r.score), 0) as score_sum
+    from {{ source('oulad_silver', 'student_assessment_clean') }} r
+    left join assessment_context a
+        on r.id_assessment = a.id_assessment
+    group by
+        a.code_module,
+        a.code_presentation,
+        r.id_assessment,
+        r.id_student
 ),
 
 gold_results as (
     select
+        code_module,
+        code_presentation,
         id_assessment,
         id_student,
         count(*) as result_count,
@@ -21,11 +39,17 @@ gold_results as (
         count(*) - count(score) as null_score_count,
         coalesce(sum(score), 0) as score_sum
     from {{ ref('fact_assessments') }}
-    group by id_assessment, id_student
+    group by
+        code_module,
+        code_presentation,
+        id_assessment,
+        id_student
 ),
 
 key_reconciliation as (
     select
+        coalesce(s.code_module, g.code_module) as code_module,
+        coalesce(s.code_presentation, g.code_presentation) as code_presentation,
         coalesce(s.id_assessment, g.id_assessment) as id_assessment,
         coalesce(s.id_student, g.id_student) as id_student,
         coalesce(s.result_count, 0) as source_result_count,
@@ -38,7 +62,9 @@ key_reconciliation as (
         coalesce(g.score_sum, 0) as gold_score_sum
     from source_results s
     full outer join gold_results g
-        on s.id_assessment = g.id_assessment
+        on s.code_module = g.code_module
+        and s.code_presentation = g.code_presentation
+        and s.id_assessment = g.id_assessment
         and s.id_student = g.id_student
 ),
 

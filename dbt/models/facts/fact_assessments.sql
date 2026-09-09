@@ -1,13 +1,12 @@
 {{ config(enabled=true) }}
 
--- File: fact_assessments.sql
 -- Purpose: Build the Gold assessment fact at one row per (id_assessment, id_student).
 -- Grain: One row per assessment result pair.
 -- Function: Integrates Silver assessment/result data with enrollment context and
 --            resolves the surrogate keys required by the Gold star schema.
 
 with assessment_results as (
-    -- Source function:
+    -- Read the source data.
     -- Reads student assessment results from Silver.
     -- NULL scores are intentionally preserved because a missing score means
     -- the result is unknown and must not be treated as zero or as a failure.
@@ -21,7 +20,7 @@ with assessment_results as (
 ),
 
 assessment_context as (
-    -- Source function:
+    -- Read the source data.
     -- Reads assessment-level metadata from Silver, including the module,
     -- presentation, assessment type, deadline and assessment weight.
     select
@@ -35,7 +34,7 @@ assessment_context as (
 ),
 
 enrollment_context as (
-    -- Source function:
+    -- Read the source data.
     -- Reads enrollment-level student attributes used to identify the
     -- student's demographic profile for the demographics dimension.
     select
@@ -52,7 +51,7 @@ enrollment_context as (
 ),
 
 student_dimension as (
-    -- Dimension lookup function:
+    -- Match source values to dimension keys.
     -- Maps the source id_student to the Gold surrogate student_key.
     select
         id_student,
@@ -61,7 +60,7 @@ student_dimension as (
 ),
 
 course_dimension as (
-    -- Dimension lookup function:
+    -- Match source values to dimension keys.
     -- Maps code_module to the Gold surrogate course_key.
     select
         code_module,
@@ -70,7 +69,7 @@ course_dimension as (
 ),
 
 presentation_dimension as (
-    -- Dimension lookup function:
+    -- Match source values to dimension keys.
     -- Maps code_module + code_presentation to presentation_key.
     select
         code_module,
@@ -80,7 +79,7 @@ presentation_dimension as (
 ),
 
 date_dimension as (
-    -- Dimension lookup function:
+    -- Match source values to dimension keys.
     -- Maps the OULAD relative submission day (date_submitted) to date_key.
     select
         relative_day,
@@ -89,7 +88,7 @@ date_dimension as (
 ),
 
 demographics_dimension as (
-    -- Dimension lookup function:
+    -- Match source values to dimension keys.
     -- Maps the enrollment demographic attributes to demographics_key.
     select
         gender,
@@ -103,7 +102,7 @@ demographics_dimension as (
 ),
 
 joined as (
-    -- Integration function:
+    -- Join the source records and dimension keys.
     -- Combines assessment results with assessment metadata, enrollment
     -- context, and all required Gold dimension keys.
     -- LEFT JOINs preserve assessment-result rows even when a related
@@ -163,7 +162,7 @@ joined as (
         and coalesce(e.disability, '__NULL__') = coalesce(g.disability, '__NULL__')
 )
 
--- Final Gold output function:
+-- Return the final Gold rows.
 -- Produces the analytics-ready fact containing business identifiers,
 -- dimension foreign keys, assessment/result measures, and mart audit fields.
 select

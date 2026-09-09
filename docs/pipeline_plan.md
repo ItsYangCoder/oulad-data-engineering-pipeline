@@ -676,7 +676,7 @@ Transformation responsibilities:
 - `dbt/models/dimensions/`: the five required dimensions and their YAML
 - `dbt/models/facts/`: the two required facts and their YAML
 - `dbt/models/reporting/`: the outcomes view and its YAML
-- `src/sql/04_analytics/`: four read-only queries for Metabase
+- `src/sql/03_analytics/`: four read-only queries for Metabase
 
 Validation responsibilities:
 

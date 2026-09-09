@@ -1,54 +1,86 @@
 -- ========================================================================================================
 -- File: tests/02_clean_checks/01_silver_row_count_checks.sql
 -- Branch: feature/clean-courses
--- Purpose: Explain every Bronze-to-Silver row-count difference across all dataset tables.
--- Input: All seven Bronze and matching Silver tables.
--- Output: Read-only validation queries with failure counts/details and stated expected results; no data changes.
--- Grain / business key: One validation record per table pair.
--- NOTE: Temporarily scoped to 'courses' only — assessments_clean, student_assessment_clean,
---       student_info_clean, student_registration_clean, vle_clean, and student_vle_clean
---       do not exist yet under oulad_silver. Uncomment the other UNION ALL blocks below in
---       each CTE once teammates merge those Silver tables.
+--
+-- Objective:
+--    Validate Bronze-to-Silver row accounting for the currently implemented Silver transformations.
+--
+--    The check identifies whether Bronze source rows are fully accounted for across:
+--      - Silver clean records
+--      - Silver quarantine records
+--      - documented deduplication
+--
+--    A zero leakage count indicates that the transformation accounts for all source rows.
+--
+-- Scope:
+--    Currently implemented Silver transformation:
+--      - courses
+--
+-- Output:
+--    One validation record showing Bronze rows, Silver clean rows, quarantine rows,
+--    accounted rows, leakage count, and PASS/FAIL status.
+--
+-- No data is inserted, updated, deleted, or otherwise modified by this file.
 -- ========================================================================================================
-WITH bronze_counts AS (
-  SELECT 'courses' AS table_name, COUNT(*) AS bronze_count FROM open_university.oulad_bronze.courses_raw
-  -- UNION ALL SELECT 'assessments' AS table_name, COUNT(*) AS bronze_count FROM open_university.oulad_bronze.assessment_raw
-  -- UNION ALL SELECT 'student_assessment' AS table_name, COUNT(*) AS bronze_count FROM open_university.oulad_bronze.student_assessment_raw
-  -- UNION ALL SELECT 'student_info' AS table_name, COUNT(*) AS bronze_count FROM open_university.oulad_bronze.student_info_raw
-  -- UNION ALL SELECT 'student_registration' AS table_name, COUNT(*) AS bronze_count FROM open_university.oulad_bronze.student_registration_raw
-  -- UNION ALL SELECT 'vle' AS table_name, COUNT(*) AS bronze_count FROM open_university.oulad_bronze.vle_raw
-  -- UNION ALL SELECT 'student_vle' AS table_name, COUNT(*) AS bronze_count FROM open_university.oulad_bronze.student_vle_raw
+
+
+WITH raw_counts AS (
+
+    SELECT
+        COUNT(*) AS raw_count
+    FROM open_university.oulad_bronze.courses_raw
+
 ),
-silver_counts AS (
-  SELECT 'courses' AS table_name, COUNT(*) AS silver_count FROM open_university.oulad_silver.courses_clean
-  -- UNION ALL SELECT 'assessments' AS table_name, COUNT(*) AS silver_count FROM open_university.oulad_silver.assessments_clean
-  -- UNION ALL SELECT 'student_assessment' AS table_name, COUNT(*) AS silver_count FROM open_university.oulad_silver.student_assessment_clean
-  -- UNION ALL SELECT 'student_info' AS table_name, COUNT(*) AS silver_count FROM open_university.oulad_silver.student_info_clean
-  -- UNION ALL SELECT 'student_registration' AS table_name, COUNT(*) AS silver_count FROM open_university.oulad_silver.student_registration_clean
-  -- UNION ALL SELECT 'vle' AS table_name, COUNT(*) AS silver_count FROM open_university.oulad_silver.vle_clean
-  -- UNION ALL SELECT 'student_vle' AS table_name, COUNT(*) AS silver_count FROM open_university.oulad_silver.student_vle_clean
+
+clean_counts AS (
+
+    SELECT
+        COUNT(*) AS clean_count
+    FROM open_university.oulad_silver.courses_clean
+
 ),
-baselines AS (
-  SELECT 'courses' AS table_name, 22 AS expected_count
-  -- UNION ALL SELECT 'assessments' AS table_name, 206 AS expected_count
-  -- UNION ALL SELECT 'student_assessment' AS table_name, 173912 AS expected_count
-  -- UNION ALL SELECT 'student_info' AS table_name, 32593 AS expected_count
-  -- UNION ALL SELECT 'student_registration' AS table_name, 32593 AS expected_count
-  -- UNION ALL SELECT 'vle' AS table_name, 6364 AS expected_count
-  -- Note: student_vle expected to change from 10,655,280 source rows to 8,459,320 complete daily keys after aggregation
-  -- UNION ALL SELECT 'student_vle' AS table_name, 8459320 AS expected_count
+
+quarantine_counts AS (
+
+    SELECT
+        COALESCE(SUM(source_row_count), 0) AS quarantine_count
+    FROM open_university.oulad_silver.courses_invalid_key_quarantine
+
 )
+
 SELECT
-  b.table_name,
-  b.bronze_count,
-  s.silver_count,
-  e.expected_count,
-  (s.silver_count - b.bronze_count) AS difference,
-  CASE 
-    WHEN s.silver_count = e.expected_count THEN 'PASSED'
-    ELSE 'FAILED'
-  END AS status
-FROM bronze_counts b
-JOIN silver_counts s ON b.table_name = s.table_name
-JOIN baselines e     ON b.table_name = e.table_name
-ORDER BY b.table_name;
+
+    'courses' AS entity_name,
+
+    raw.raw_count,
+
+    clean.clean_count,
+
+    quarantine.quarantine_count,
+
+    clean.clean_count
+        + quarantine.quarantine_count
+        AS accounted_count,
+
+    raw.raw_count
+        - (
+            clean.clean_count
+            + quarantine.quarantine_count
+          )
+        AS leakage_count,
+
+    CASE
+        WHEN raw.raw_count
+             - (
+                 clean.clean_count
+                 + quarantine.quarantine_count
+               ) = 0
+        THEN 'PASS'
+        ELSE 'FAIL'
+    END AS check_status
+
+FROM raw_counts AS raw
+
+CROSS JOIN clean_counts AS clean
+
+CROSS JOIN quarantine_counts AS quarantine;

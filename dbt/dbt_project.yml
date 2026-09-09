@@ -1,27 +1,17 @@
-# File: dbt_project.yml
-# Suggested branch: chore/setup-dbt
-# Purpose: Tell dbt where this OULAD project keeps models, tests and macros.
-# Status: Starter configuration; connections and transformations still need implementation.
-#
-# What the assigned member should put here:
-# 1. Keep the project/profile name consistent with profiles.yml.example.
-# 2. Set folder paths and model materializations for five dimensions, two facts
-#    and the vw_student_outcomes reporting view.
-# 3. Agree the dbt/adapter versions, target schema and incremental settings before
-#    enabling models. Add only configuration the project actually uses.
-# 4. Keep credentials in environment variables or a local profile outside Git.
-# 5. Test project parsing, then validate implemented models in a development schema.
-#
-# Unfinished SQL models/tests are disabled individually in their own files.
-# A successful parse of this scaffold does not mean a pipeline or data test has run.
-# Reference: https://docs.getdbt.com/reference/dbt_project.yml
 name: oulad_project
 version: "1.0.0"
 config-version: 2
+
 profile: oulad_project
+require-dbt-version: [">=1.10.0", "<2.0.0"]
+
 model-paths: ["models"]
 test-paths: ["tests"]
 macro-paths: ["macros"]
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
 
 models:
   oulad_project:

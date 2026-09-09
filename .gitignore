@@ -1,0 +1,11 @@
+# Local dbt credentials
+dbt/profiles.yml
+
+# Generated dbt files
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+
+# Environment files
+.env
+.env.*

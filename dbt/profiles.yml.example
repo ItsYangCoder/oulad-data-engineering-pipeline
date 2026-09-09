@@ -1,28 +1,14 @@
-# File: profiles.yml.example
-# Suggested branch: chore/setup-dbt
-# Purpose: Show the connection settings a member must supply to run dbt on Databricks.
-# Status: Example only; it contains no working credentials.
-#
-# What the assigned member should put here:
-# 1. Maintain a credential-free example matching the oulad_project profile name.
-# 2. Copy it to a local profiles.yml outside the repository (for example ~/.dbt/).
-# 3. Supply the workspace host, full SQL warehouse HTTP path and token through
-#    the named environment variables. The HTTP path is not just a warehouse ID.
-# 4. Set DBT_SCHEMA to the agreed development schema before testing. The shared
-#    final reporting target is open_university.oulad_gold; confirm the target
-#    before any build. This example does not create a development schema.
-# 5. Validate with dbt debug, then run only implemented models/tests.
-#
-# Done when: a member can connect using this documented setup without committing secrets.
-# Keep real profiles, tokens and generated dbt output out of Git.
-# Reference: https://docs.getdbt.com/docs/local/connect-data-platform/databricks-setup
+# Copy this file to ~/.dbt/profiles.yml before running dbt.
+# Install the pinned adapter from requirements.txt.
+# Supply all credentials through environment variables.
+
 oulad_project:
   target: dev
   outputs:
     dev:
       type: databricks
       catalog: open_university
-      schema: "{{ env_var('DBT_SCHEMA') }}"
+      schema: "{{ env_var('DBT_SCHEMA', 'oulad_gold_dev') }}"
       host: "{{ env_var('DATABRICKS_HOST') }}"
       http_path: "{{ env_var('DATABRICKS_HTTP_PATH') }}"
       token: "{{ env_var('DBT_ENV_SECRET_DATABRICKS_TOKEN') }}"

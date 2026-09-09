@@ -1,19 +1,126 @@
-# File: silver_sources.yml
-# Suggested branch: chore/setup-dbt
-# Purpose: Register existing Silver tables so Gold models can read them with source().
-# Status: Source definitions still need implementation; [] is an empty YAML list.
-#
-# What the assigned member should put here:
-# 1. Replace sources: [] with a source named oulad_silver.
-# 2. Set database/catalog mapping to open_university and schema to oulad_silver,
-#    using the chosen dbt-databricks adapter's source properties.
-# 3. Declare assessment_clean, courses_clean, student_assessment_clean,
-#    student_info_clean, student_registration_clean, student_vle_clean and vle_clean.
-# 4. Add descriptions, business-key columns, audit columns and relevant source tests.
-# 5. Match identifiers to the actual Silver table names; source() registers inputs,
-#    it does not create or ingest these tables.
-#
-# Models will use source('oulad_silver', 'courses_clean'), for example.
-# Done when: all seven validated Silver tables resolve under their declared names.
 version: 2
-sources: []
+
+sources:
+  - name: oulad_silver
+    description: Clean OULAD tables produced by the Silver layer.
+    database: open_university
+    schema: oulad_silver
+    tables:
+      - name: assessment_clean
+        description: One cleaned record per assessment.
+        columns:
+          - name: id_assessment
+            data_tests:
+              - not_null
+              - unique
+          - name: code_module
+            data_tests:
+              - not_null
+          - name: code_presentation
+            data_tests:
+              - not_null
+          - name: clean_load_timestamp
+            data_tests:
+              - not_null
+
+      - name: courses_clean
+        description: One cleaned record per module presentation.
+        columns:
+          - name: code_module
+            data_tests:
+              - not_null
+          - name: code_presentation
+            data_tests:
+              - not_null
+          - name: module_presentation_length
+            data_tests:
+              - not_null
+          - name: clean_load_timestamp
+            data_tests:
+              - not_null
+
+      - name: student_assessment_clean
+        description: One cleaned student result per assessment.
+        columns:
+          - name: id_assessment
+            data_tests:
+              - not_null
+          - name: id_student
+            data_tests:
+              - not_null
+          - name: clean_load_timestamp
+            data_tests:
+              - not_null
+
+      - name: student_info_clean
+        description: One cleaned student enrollment per module presentation.
+        columns:
+          - name: code_module
+            data_tests:
+              - not_null
+          - name: code_presentation
+            data_tests:
+              - not_null
+          - name: id_student
+            data_tests:
+              - not_null
+          - name: clean_load_timestamp
+            data_tests:
+              - not_null
+
+      - name: student_registration_clean
+        description: Registration dates for each student enrollment.
+        columns:
+          - name: code_module
+            data_tests:
+              - not_null
+          - name: code_presentation
+            data_tests:
+              - not_null
+          - name: id_student
+            data_tests:
+              - not_null
+          - name: clean_load_timestamp
+            data_tests:
+              - not_null
+
+      - name: student_vle_clean
+        description: Daily clicks per student, module presentation, and VLE resource.
+        columns:
+          - name: code_module
+            data_tests:
+              - not_null
+          - name: code_presentation
+            data_tests:
+              - not_null
+          - name: id_student
+            data_tests:
+              - not_null
+          - name: id_site
+            data_tests:
+              - not_null
+          - name: date
+            data_tests:
+              - not_null
+          - name: sum_click
+            data_tests:
+              - not_null
+          - name: clean_load_timestamp
+            data_tests:
+              - not_null
+
+      - name: vle_clean
+        description: One cleaned VLE resource per module presentation.
+        columns:
+          - name: code_module
+            data_tests:
+              - not_null
+          - name: code_presentation
+            data_tests:
+              - not_null
+          - name: id_site
+            data_tests:
+              - not_null
+          - name: clean_load_timestamp
+            data_tests:
+              - not_null

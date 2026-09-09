@@ -6,7 +6,7 @@ WITH course_counts AS (
   SELECT
     (SELECT COUNT(*) FROM open_university.oulad_bronze.courses_raw) AS bronze_rows,
     (SELECT COUNT(*) FROM open_university.oulad_silver.courses_clean) AS silver_rows,
-    (SELECT COUNT(*) FROM open_university.oulad_silver.courses_invalid_key_quarantine) AS quarantined_rows
+    (SELECT COALESCE(SUM(source_row_count), 0) FROM open_university.oulad_silver.courses_invalid_key_quarantine) AS quarantined_rows
 )
 SELECT *,
   CASE

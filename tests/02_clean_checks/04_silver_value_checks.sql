@@ -520,12 +520,12 @@ WHERE studied_credits IS NULL
 SELECT 'vle_invalid_week_ranges' AS check_name, COUNT(*) AS invalid_rows,
        CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
 FROM open_university.oulad_silver.vle_clean
-WHERE is_valid_week_range = FALSE;
+WHERE is_valid_date_range = FALSE;
 
-SELECT 'vle_invalid_course_parents' AS check_name, COUNT(*) AS invalid_rows,
+SELECT 'vle_invalid_business_keys' AS check_name, COUNT(*) AS invalid_rows,
        CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
 FROM open_university.oulad_silver.vle_clean
-WHERE is_valid_parent = FALSE OR is_valid_parent IS NULL;
+WHERE has_valid_business_keys = FALSE OR has_valid_business_keys IS NULL;
 
 SELECT 'student_vle_negative_clicks' AS check_name, COUNT(*) AS invalid_rows,
        CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status

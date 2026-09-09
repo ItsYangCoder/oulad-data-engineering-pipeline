@@ -125,12 +125,21 @@ joined as (
         d.date_key,
         g.demographics_key
     from assessment_results r
+
+    -- Assessment-result to assessment-definition function:
+    -- Uses id_assessment to attach the module, presentation, type,
+    -- deadline and weight for each student result.
     left join assessment_context a
         on r.id_assessment = a.id_assessment
+
+    -- Enrollment context function:
+    -- Matches the student to the specific module and presentation where
+    -- the assessment was taken, preventing cross-presentation demographic matches.
     left join enrollment_context e
         on r.id_student = e.id_student
         and a.code_module = e.code_module
         and a.code_presentation = e.code_presentation
+
     left join student_dimension s
         on r.id_student = s.id_student
     left join course_dimension c
@@ -140,6 +149,11 @@ joined as (
         and a.code_presentation = p.code_presentation
     left join date_dimension d
         on r.date_submitted = d.relative_day
+
+    -- Demographics matching function:
+    -- Uses enrollment-level demographic attributes to resolve demographics_key.
+    -- COALESCE normalizes NULL values on both sides so missing attributes
+    -- can still match the corresponding NULL demographic profile.
     left join demographics_dimension g
         on coalesce(e.gender, '__NULL__') = coalesce(g.gender, '__NULL__')
         and coalesce(e.region, '__NULL__') = coalesce(g.region, '__NULL__')

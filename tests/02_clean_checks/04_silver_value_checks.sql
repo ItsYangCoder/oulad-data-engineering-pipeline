@@ -1,217 +1,169 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+-- ========================================================================================================
+-- File: tests/02_clean_checks/04_silver_value_checks.sql
+--
+-- Objective:
+--    Validate domain values, normalized source values, schema data types,
+--    and metadata flag accuracy for currently implemented Silver clean tables.
+--
+-- Scope:
+--    Currently implemented Silver transformations:
+--      - courses_clean
+--      - student_info_clean
+--      - student_registration_clean
+--
+-- Ensures:
+--    courses_clean:
+--      1. module_presentation_length contains only valid positive values when populated.
+--      2. is_valid_length correctly reflects the validity of module_presentation_length.
+--      3. Invalid business-key records are not present in the clean Silver table.
+--
+--    student_info_clean / student_registration_clean:
+--      1. Silver columns use the agreed physical data types.
+--      2. Source placeholder values do not remain as text after cleaning.
+--      3. Categorical attributes contain only accepted normalized values.
+--      4. Numeric student attributes contain valid nonnegative values.
+--
+-- Important Data Quality Decisions:
+--    - NULL imd_band values are valid because the current source delivery contains
+--      1,111 documented missing IMD values.
+--
+--    - Source imd_band = '10-20' is normalized to '10-20%'.
+--
+--    - Databricks type validation uses full_data_type rather than data_type because
+--      metadata aliases such as LONG may be shown for BIGINT columns.
+--
+--    - Negative registration and unregistration relative-day values are valid and
+--      therefore are not treated as value-range failures.
+--
+-- Output:
+--    Read-only validation queries showing failure counts and PASS/FAIL status.
+--
+-- No data is inserted, updated, deleted, or otherwise modified by this file.
+-- ========================================================================================================
 
 
 
 -- ========================================================================================================
--- File: tests/02_clean_checks/04_silver_value_checks.sql
--- Branch: feature/clean-students
+-- SECTION 1: COURSES CLEAN VALUE CHECKS
+-- ========================================================================================================
+
+
+-- ========================================================================================================
+-- CHECK 1: COURSES CLEAN - LENGTH DOMAIN VALIDITY
+-- ========================================================================================================
 --
--- Objective:
---    Validate schema types, normalized source placeholders, accepted categorical values,
---    and numeric value ranges for the student Silver tables.
+-- module_presentation_length must be a positive value when populated.
 --
---    Ensures:
---      1. student_info_clean and student_registration_clean use the agreed Silver data types.
---      2. Source placeholder values such as ?, NA, N/A, and NULL text do not remain
---         in student_info_clean text columns after cleaning.
---      3. gender, disability, final_result, and imd_band contain only agreed categories.
---      4. num_of_prev_attempts and studied_credits contain valid nonnegative integer values.
+-- Invalid values include:
+--    - zero
+--    - negative values
 --
--- Scope:
---    Silver transformations owned by Task #9:
---      - student_info_clean
---      - student_registration_clean
+-- NULL is not treated as a domain violation here because missing values are handled separately
+-- by the is_valid_length flag check.
 --
--- Expected Data Types:
---    student_info_clean:
---      code_module              STRING
---      code_presentation        STRING
---      id_student               BIGINT
---      gender                   STRING
---      region                   STRING
---      highest_education        STRING
---      imd_band                 STRING
---      age_band                 STRING
---      num_of_prev_attempts     INT
---      studied_credits          INT
---      disability               STRING
---      final_result             STRING
---      clean_load_timestamp     TIMESTAMP
---      clean_load_date          DATE
+-- Expected result:
+--    invalid_rows = 0
+--    check_status = PASS
+-- ========================================================================================================
+
+SELECT
+
+    'courses_clean_invalid_length_values' AS check_name,
+
+    COUNT(*) AS invalid_rows,
+
+    CASE
+        WHEN COUNT(*) = 0 THEN 'PASS'
+        ELSE 'FAIL'
+    END AS check_status
+
+FROM open_university.oulad_silver.courses_clean
+
+WHERE module_presentation_length IS NOT NULL
+  AND module_presentation_length <= 0;
+
+
+
+-- ========================================================================================================
+-- CHECK 2: COURSES CLEAN - LENGTH FLAG ACCURACY
+-- ========================================================================================================
 --
---    student_registration_clean:
---      code_module              STRING
---      code_presentation        STRING
---      id_student               BIGINT
---      date_registration        INT
---      date_unregistration      INT
---      clean_load_timestamp     TIMESTAMP
---      clean_load_date          DATE
+-- is_valid_length must correctly describe module_presentation_length.
 --
--- Accepted Categories:
---    gender:
---      F, M
+-- Expected rule:
+--    TRUE  -> module_presentation_length is present and greater than zero.
+--    FALSE -> module_presentation_length is NULL or not greater than zero.
 --
---    disability:
---      Y, N
+-- Expected result:
+--    mismatch_rows = 0
+--    check_status = PASS
+-- ========================================================================================================
+
+SELECT
+
+    'courses_clean_flag_accuracy' AS check_name,
+
+    COUNT(*) AS mismatch_rows,
+
+    CASE
+        WHEN COUNT(*) = 0 THEN 'PASS'
+        ELSE 'FAIL'
+    END AS check_status
+
+FROM open_university.oulad_silver.courses_clean
+
+WHERE
+      (
+          is_valid_length = TRUE
+          AND (
+              module_presentation_length IS NULL
+              OR module_presentation_length <= 0
+          )
+      )
+
+   OR (
+          is_valid_length = FALSE
+          AND (
+              module_presentation_length IS NOT NULL
+              AND module_presentation_length > 0
+          )
+      );
+
+
+
+-- ========================================================================================================
+-- CHECK 3: COURSES CLEAN - BUSINESS KEY FLAG ACCURACY
+-- ========================================================================================================
 --
---    final_result:
---      Distinction, Fail, Pass, Withdrawn
+-- Invalid business keys should not remain in courses_clean.
 --
---    imd_band:
---      0-10%, 10-20%, 20-30%, 30-40%, 40-50%,
---      50-60%, 60-70%, 70-80%, 80-90%, 90-100%
+-- Invalid/conflicting business-key records are expected to be handled by the
+-- courses_clean transformation and routed to the quarantine table.
 --
--- Important Data Quality Decisions:
---    - Databricks metadata is validated through full_data_type rather than data_type.
---      This avoids metadata aliases such as LONG for a column physically defined as BIGINT.
---
---    - The source imd_band value '10-20' is expected to have already been normalized
---      to '10-20%' by student_info_clean.
---
---    - NULL imd_band values remain valid because 1,111 missing IMD values are documented
---      and intentionally preserved.
---
---    - gender, disability, and final_result are required by these value checks and therefore
---      NULL values are counted as failures.
---
---    - num_of_prev_attempts and studied_credits must be present and nonnegative.
---
---    - Registration relative-day fields are intentionally not checked for nonnegative values
---      because negative registration and unregistration days are valid.
---
--- Output:
---    Read-only validation results showing the validation rule, affected column/rule,
---    failure count, expected count, and PASS/FAIL status.
---
--- No data is inserted, updated, deleted, or otherwise modified by this file.
+-- Expected result:
+--    invalid_key_flag_rows = 0
+--    check_status = PASS
+-- ========================================================================================================
+
+SELECT
+
+    'courses_clean_is_valid_key_check' AS check_name,
+
+    COUNT(*) AS invalid_key_flag_rows,
+
+    CASE
+        WHEN COUNT(*) = 0 THEN 'PASS'
+        ELSE 'FAIL'
+    END AS check_status
+
+FROM open_university.oulad_silver.courses_clean
+
+WHERE is_valid_key = FALSE;
+
+
+
+-- ========================================================================================================
+-- SECTION 2: STUDENT INFO AND STUDENT REGISTRATION VALUE CHECKS
 -- ========================================================================================================
 
 
@@ -219,10 +171,10 @@
 -- PREPARATION: DEFINE EXPECTED SILVER COLUMN TYPES
 -- ========================================================================================================
 --
--- Create an in-query reference containing the expected physical type for every column
--- owned by the two Task #9 Silver transformations.
+-- Define the expected physical data type for every column owned by the Task #9
+-- student Silver transformations.
 --
--- These expected types are compared against Unity Catalog metadata in the next CTE.
+-- These expected types are compared with Unity Catalog metadata below.
 -- ========================================================================================================
 
 WITH expected_types AS (
@@ -262,13 +214,13 @@ WITH expected_types AS (
 -- PREPARATION: IDENTIFY SILVER TYPE MISMATCHES
 -- ========================================================================================================
 --
--- Compare the expected type definitions above with the actual Unity Catalog metadata.
+-- Compare the expected definitions above against actual Unity Catalog metadata.
 --
--- full_data_type is used instead of data_type because Databricks may display aliases such
--- as LONG even when the underlying physical type is BIGINT.
+-- full_data_type is used instead of data_type because Databricks may display aliases,
+-- such as LONG, even when the underlying physical type is BIGINT.
 --
 -- A mismatch is recorded when:
---    1. An expected column cannot be found in the target schema, OR
+--    1. An expected column cannot be found, OR
 --    2. Its physical data type differs from the expected type.
 --
 -- Expected result:
@@ -300,8 +252,8 @@ type_mismatches AS (
 -- CHECK 1: STUDENT SILVER SCHEMA TYPES
 -- ========================================================================================================
 --
--- Confirm that all expected columns across student_info_clean and student_registration_clean
--- exist and use the agreed physical Silver data types.
+-- Confirm that all expected columns across student_info_clean and
+-- student_registration_clean exist and use the agreed physical Silver data types.
 --
 -- Expected result:
 --    failure_count = 0
@@ -311,7 +263,9 @@ type_mismatches AS (
 SELECT
     'Student Silver schema' AS check_name,
     'student_info_clean + student_registration_clean' AS column_or_rule,
+
     COUNT(*) AS failure_count,
+
     0 AS expected_count,
 
     CASE
@@ -322,15 +276,17 @@ SELECT
 FROM type_mismatches
 
 
+
 UNION ALL
+
 
 
 -- ========================================================================================================
 -- CHECK 2: STUDENT INFO CLEAN - SOURCE PLACEHOLDER NORMALIZATION
 -- ========================================================================================================
 --
--- Confirm that documented textual placeholder values have not survived into the cleaned
--- student_info_clean categorical/text attributes.
+-- Confirm that documented textual placeholder values have not survived into the
+-- cleaned student_info_clean text attributes.
 --
 -- Values checked:
 --    ?
@@ -348,7 +304,9 @@ UNION ALL
 SELECT
     'Source placeholder normalization',
     'student_info_clean text columns',
+
     COUNT(*),
+
     0,
 
     CASE
@@ -386,7 +344,9 @@ WHERE UPPER(TRIM(COALESCE(code_module, '')))
           IN ('?', 'NA', 'N/A', 'NULL')
 
 
+
 UNION ALL
+
 
 
 -- ========================================================================================================
@@ -399,7 +359,7 @@ UNION ALL
 --    F
 --    M
 --
--- NULL gender values are also considered failures by this validation rule.
+-- NULL gender values are considered failures.
 --
 -- Expected result:
 --    failure_count = 0
@@ -409,7 +369,9 @@ UNION ALL
 SELECT
     'Accepted values',
     'gender',
+
     COUNT(*),
+
     0,
 
     CASE
@@ -423,7 +385,9 @@ WHERE gender NOT IN ('F', 'M')
    OR gender IS NULL
 
 
+
 UNION ALL
+
 
 
 -- ========================================================================================================
@@ -436,7 +400,7 @@ UNION ALL
 --    Y
 --    N
 --
--- NULL disability values are also considered failures by this validation rule.
+-- NULL disability values are considered failures.
 --
 -- Expected result:
 --    failure_count = 0
@@ -446,7 +410,9 @@ UNION ALL
 SELECT
     'Accepted values',
     'disability',
+
     COUNT(*),
+
     0,
 
     CASE
@@ -460,7 +426,9 @@ WHERE disability NOT IN ('Y', 'N')
    OR disability IS NULL
 
 
+
 UNION ALL
+
 
 
 -- ========================================================================================================
@@ -475,7 +443,7 @@ UNION ALL
 --    Pass
 --    Withdrawn
 --
--- NULL final_result values are considered failures by this validation rule.
+-- NULL final_result values are considered failures.
 --
 -- Dropout classification continues to use:
 --    final_result = 'Withdrawn'
@@ -488,7 +456,9 @@ UNION ALL
 SELECT
     'Accepted values',
     'final_result',
+
     COUNT(*),
+
     0,
 
     CASE
@@ -507,7 +477,9 @@ WHERE final_result NOT IN (
 OR final_result IS NULL
 
 
+
 UNION ALL
+
 
 
 -- ========================================================================================================
@@ -518,8 +490,8 @@ UNION ALL
 --
 -- The original source value '10-20' is expected to have been standardized to '10-20%'.
 --
--- NULL imd_band values are intentionally allowed because the current source delivery contains
--- 1,111 documented missing IMD values.
+-- NULL imd_band values are intentionally allowed because the current source delivery
+-- contains 1,111 documented missing IMD values.
 --
 -- Accepted populated values:
 --    0-10%
@@ -541,7 +513,9 @@ UNION ALL
 SELECT
     'Accepted values',
     'imd_band',
+
     COUNT(*),
+
     0,
 
     CASE
@@ -566,14 +540,17 @@ WHERE imd_band IS NOT NULL
   )
 
 
+
 UNION ALL
+
 
 
 -- ========================================================================================================
 -- CHECK 7: STUDENT INFO CLEAN - PREVIOUS ATTEMPTS RANGE
 -- ========================================================================================================
 --
--- num_of_prev_attempts represents the number of previous attempts associated with an enrollment.
+-- num_of_prev_attempts represents the number of previous attempts associated
+-- with an enrollment.
 --
 -- Valid values must:
 --    - be non-NULL
@@ -589,7 +566,9 @@ UNION ALL
 SELECT
     'Numeric range',
     'num_of_prev_attempts',
+
     COUNT(*),
+
     0,
 
     CASE
@@ -603,7 +582,9 @@ WHERE num_of_prev_attempts IS NULL
    OR num_of_prev_attempts < 0
 
 
+
 UNION ALL
+
 
 
 -- ========================================================================================================
@@ -626,7 +607,9 @@ UNION ALL
 SELECT
     'Numeric range',
     'studied_credits',
+
     COUNT(*),
+
     0,
 
     CASE

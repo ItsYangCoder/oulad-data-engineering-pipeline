@@ -1,123 +1,20 @@
--- File: 02_silver_key_checks.sql
--- Suggested branch: feature/add-silver-checks
--- For checks tied to one transformation, use that transformation's branch instead.
--- Purpose: Find missing or repeated Silver business keys.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: All seven Silver tables.
--- Output: Read-only validation queries with failure counts/details and stated expected results; no data
---    changes.
---
--- What to put in this file:
--- 1. Check assessment by id_assessment; courses by code_module + code_presentation.
--- 2. Check student_assessment by id_assessment + id_student; student_info and registration by
---    code_module + code_presentation + id_student.
--- 3. Check vle by code_module + code_presentation + id_site; student_vle by those codes plus id_student
---    + id_site + date.
--- 4. Test each key component for NULL/blank separately, then GROUP BY the full key and HAVING COUNT(*)
---    > 1.
---
--- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
---    result alone is not an automated test.
---
--- Done when: No missing required key components and no repeated full business keys.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 -- ========================================================================================================
 -- File: tests/02_clean_checks/02_silver_key_checks.sql
--- Branch: feature/clean-students
 --
 -- Objective:
---    Verify business key completeness and uniqueness for the student enrollment
---    and registration Silver tables.
---
---    Ensures:
---      1. Every required business-key attribute is populated.
---      2. Blank string values are not accepted for text key attributes.
---      3. The complete enrollment business key is unique within each table.
---      4. id_student is not treated as a unique key by itself because the same
---         student may enroll in multiple module presentations.
+--    Verify business key completeness and uniqueness for currently implemented
+--    Silver clean tables.
 --
 -- Scope:
---    Silver transformations owned by Task #9:
+--    Currently implemented Silver transformations:
+--      - courses_clean
 --      - student_info_clean
 --      - student_registration_clean
 --
 -- Business Keys:
+--    courses_clean:
+--      (code_module, code_presentation)
+--
 --    student_info_clean:
 --      (code_module, code_presentation, id_student)
 --
@@ -125,18 +22,115 @@
 --      (code_module, code_presentation, id_student)
 --
 -- Expected Results:
---    For both tables:
---      - missing / blank code_module = 0
---      - missing / blank code_presentation = 0
---      - NULL id_student = 0
---      - duplicate complete business keys = 0
+--    - No missing required business-key attributes.
+--    - No blank required text key attributes.
+--    - No duplicate complete business keys.
+--
+-- Important Business-Key Decision:
+--    id_student is not treated as a unique key by itself because one student may
+--    legitimately enroll in multiple module presentations.
 --
 -- Output:
---    Read-only validation results showing the table, validation rule,
---    affected column or key, failure count, expected count, and PASS/FAIL status.
+--    Read-only validation results showing invalid or duplicate business-key counts
+--    and PASS/FAIL status.
 --
 -- No data is inserted, updated, deleted, or otherwise modified by this file.
 -- ========================================================================================================
+
+
+
+-- ========================================================================================================
+-- SECTION 1: COURSES CLEAN KEY CHECKS
+-- ========================================================================================================
+
+
+-- ========================================================================================================
+-- CHECK 1: COURSES CLEAN - NULL BUSINESS KEY ATTRIBUTES
+-- ========================================================================================================
+--
+-- Every Silver course record must contain both attributes required to identify its
+-- module/presentation business key.
+--
+-- Expected result:
+--    invalid_rows = 0
+--    check_status = PASS
+-- ========================================================================================================
+
+SELECT
+
+    'courses_clean_null_keys' AS check_name,
+
+    COUNT(*) AS invalid_rows,
+
+    CASE
+        WHEN COUNT(*) = 0 THEN 'PASS'
+        ELSE 'FAIL'
+    END AS check_status
+
+FROM open_university.oulad_silver.courses_clean
+
+WHERE code_module IS NULL
+   OR code_presentation IS NULL;
+
+
+
+-- ========================================================================================================
+-- CHECK 2: COURSES CLEAN - BUSINESS KEY UNIQUENESS
+-- ========================================================================================================
+--
+-- The combination of code_module and code_presentation must identify exactly one
+-- Silver course record.
+--
+-- Expected result:
+--    duplicate_keys = 0
+--    check_status = PASS
+--
+-- duplicate_keys counts the number of business-key combinations that occur more than once.
+-- ========================================================================================================
+
+SELECT
+
+    'courses_clean_duplicate_keys' AS check_name,
+
+    COUNT(*) AS duplicate_keys,
+
+    CASE
+        WHEN COUNT(*) = 0 THEN 'PASS'
+        ELSE 'FAIL'
+    END AS check_status
+
+FROM (
+
+    SELECT
+
+        code_module,
+        code_presentation,
+
+        COUNT(*) AS row_count
+
+    FROM open_university.oulad_silver.courses_clean
+
+    GROUP BY
+        code_module,
+        code_presentation
+
+    HAVING COUNT(*) > 1
+
+) AS duplicate_key_groups;
+
+
+
+-- ========================================================================================================
+-- SECTION 2: STUDENT INFO AND STUDENT REGISTRATION KEY CHECKS
+-- ========================================================================================================
+--
+-- The student tables use the complete enrollment business key:
+--
+--    code_module + code_presentation + id_student
+--
+-- id_student alone is intentionally not treated as unique.
+-- ========================================================================================================
+
 
 
 -- ========================================================================================================
@@ -147,10 +141,7 @@
 --
 --    code_module + code_presentation + id_student
 --
--- id_student alone is intentionally not used because one student may legitimately
--- appear in several module presentations.
---
--- Only key combinations occurring more than once are retained in these CTEs.
+-- Only business-key combinations occurring more than once are retained in these CTEs.
 -- ========================================================================================================
 
 WITH student_info_duplicate_keys AS (
@@ -192,6 +183,7 @@ student_registration_duplicate_keys AS (
 )
 
 
+
 -- ========================================================================================================
 -- CHECK 1: STUDENT INFO CLEAN - code_module COMPLETENESS
 -- ========================================================================================================
@@ -228,7 +220,9 @@ SELECT
 FROM open_university.oulad_silver.student_info_clean
 
 
+
 UNION ALL
+
 
 
 -- ========================================================================================================
@@ -267,7 +261,9 @@ SELECT
 FROM open_university.oulad_silver.student_info_clean
 
 
+
 UNION ALL
+
 
 
 -- ========================================================================================================
@@ -301,7 +297,9 @@ SELECT
 FROM open_university.oulad_silver.student_info_clean
 
 
+
 UNION ALL
+
 
 
 -- ========================================================================================================
@@ -340,7 +338,9 @@ SELECT
 FROM student_info_duplicate_keys
 
 
+
 UNION ALL
+
 
 
 -- ========================================================================================================
@@ -379,7 +379,9 @@ SELECT
 FROM open_university.oulad_silver.student_registration_clean
 
 
+
 UNION ALL
+
 
 
 -- ========================================================================================================
@@ -418,7 +420,9 @@ SELECT
 FROM open_university.oulad_silver.student_registration_clean
 
 
+
 UNION ALL
+
 
 
 -- ========================================================================================================
@@ -453,7 +457,9 @@ SELECT
 FROM open_university.oulad_silver.student_registration_clean
 
 
+
 UNION ALL
+
 
 
 -- ========================================================================================================
@@ -486,6 +492,7 @@ SELECT
     END
 
 FROM student_registration_duplicate_keys
+
 
 
 -- ========================================================================================================

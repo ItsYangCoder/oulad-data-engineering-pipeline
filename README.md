@@ -1,68 +1,103 @@
 # OULAD Data Engineering Pipeline
 
-A Databricks data engineering project that transforms the Open University Learning Analytics Dataset (OULAD) through Bronze, Silver, and Gold layers for student learning analytics.
+This project builds a reproducible Databricks pipeline for the Open University Learning Analytics Dataset (OULAD). It transforms seven source files through Bronze, Silver, and Gold layers so student enrollment, outcomes, assessments, and learning-platform activity can be analyzed together.
 
-## Project status
+## Business questions
 
-The repository currently includes:
+The pipeline supports four questions:
 
-- Databricks catalog and schema setup
-- Bronze ingestion scripts for all seven OULAD source files
-- Bronze data-quality and source validation checks
-- Source assessment, assumptions, and pipeline planning documents
-- Silver transformations and validation checks for all seven source tables
-- dbt definitions for five Gold dimensions, two facts, and an enrollment-level reporting view
-- Analytics and validation SQL aligned to the declared fact grains
-- Databricks execution and reconciliation pending for the redesigned Gold models
+1. How does engagement relate to performance?
+2. What patterns appear among students who withdraw?
+3. How does student activity change throughout a course?
+4. Do demographics influence dropout?
 
-Work that is still in progress is not presented as completed in this README.
+## Architecture
 
-## Why we use dbt
-
-This project uses dbt to manage the transformation logic in the Gold layer as version-controlled, reviewable code.
-
-Instead of creating transformations manually in Databricks and leaving the logic only inside the database, dbt allows the team to:
-
-- keep the SQL models in GitHub;
-- review and track changes through pull requests;
-- define dependencies between models with `source()` and `ref()`;
-- run data-quality tests on the models; and
-- rebuild the same transformations consistently in another environment.
-
-The database stores the created tables and views. dbt stores and runs the transformation instructions that create or update them. Jinja and other dbt features support the models, but the main purpose is to make data transformations reproducible, testable, and easier for a team to maintain.
-
-## Current architecture
-
-```text
-Source CSV files
-      ↓
-Bronze: open_university.oulad_bronze
-      ↓
-Silver: open_university.oulad_silver
-      ↓
-Gold: open_university.oulad_gold
-      ↓
-Analytics and Metabase
+```mermaid
+flowchart TD
+    A[OULAD CSV files] --> B[Bronze raw tables]
+    B --> C[Silver clean tables]
+    C --> D[Gold fact constellation]
+    D --> E[Analytics and Metabase]
+    B -. source checks .-> Q[Quality checks]
+    C -. reconciliation .-> Q
+    D -. dbt tests .-> Q
 ```
 
-Quality checks use `open_university.oulad_quality`.
+| Layer | Schema | Purpose |
+| --- | --- | --- |
+| Bronze | `open_university.oulad_bronze` | Preserves source values and ingestion metadata |
+| Silver | `open_university.oulad_silver` | Cleans types, keys, categories, and repeated records |
+| Gold | `open_university.oulad_gold` | Provides dimensions, facts, and a reporting view |
+| Quality | `open_university.oulad_quality` | Stores quarantined records when applicable |
+
+## Gold dimensional model
+
+The Gold layer is a **fact constellation**, not a single star schema, because two fact tables share five dimensions.
+
+### Dimensions
+
+| Model | Grain |
+| --- | --- |
+| `dim_student` | One row per student |
+| `dim_course` | One row per module |
+| `dim_module_presentation` | One row per module and presentation combination |
+| `dim_date` | One row per observed relative day plus one Unknown record |
+| `dim_demographics` | One row per distinct demographic profile |
+
+### Facts and reporting view
+
+| Model | Type | Grain |
+| --- | --- | --- |
+| `fact_student_enrollment` | Fact | One student enrollment in one module presentation |
+| `fact_vle_interactions` | Fact | One student, presentation, VLE resource, and relative day |
+| `vw_student_outcomes` | View | One student enrollment in one module presentation |
+
+`fact_student_enrollment` contains enrollment outcomes and assessment summaries. `fact_vle_interactions` keeps detailed daily engagement. The reporting view starts from the complete enrollment population and joins separately aggregated VLE measures, so students with no recorded activity remain included.
+
+OULAD dates are relative day offsets from the module presentation start. They are not converted into calendar dates because the source does not provide a reliable calendar start date for every presentation.
+
+Schema references:
+
+- [Fact constellation guide](docs/images/oulad_fact_constellation.md)
+- [DBML definition](docs/images/oulad_fact_constellation.dbml)
+
+## Validated results
+
+The Gold models were deployed from `main` using a Databricks dbt Job. The final run completed with `PASS=125`, `WARN=0`, `ERROR=0`, and `SKIP=0`.
+
+| Check | Result |
+| --- | ---: |
+| Enrollments | 32,593 |
+| Unique enrollment keys | 32,593 |
+| Withdrawn enrollments | 10,156 |
+| Assessment results | 173,912 |
+| Scored assessment results | 173,739 |
+| Missing scores | 173 |
+| Daily VLE fact rows | 8,459,320 |
+| Unique VLE interaction keys | 8,459,320 |
+| Total VLE clicks | 39,605,099 |
+| Enrollments with no VLE activity | 3,365 |
+
+These results confirm the declared fact grains and reconcile the main enrollment, assessment, and click measures with Silver.
 
 ## Repository structure
 
 | Path | Purpose |
 | --- | --- |
 | `src/sql/00_setup/` | Creates the Databricks catalog and schemas |
-| `src/sql/01_raw/` | Loads the seven source CSV files into Bronze |
-| `src/sql/02_clean/` | Contains the Silver cleaning transformations |
-| `dbt/` | Contains the planned Gold dimensions, facts, reporting view, and dbt tests |
-| `src/sql/03_analytics/` | Contains the four analytics queries for Metabase |
-| `tests/` | Contains Bronze, Silver, Gold, and business validation checks |
-| `docs/` | Contains the source assessment, assumptions, and pipeline plan |
-| `.github/workflows/` | Contains the CI and deployment workflow files |
+| `src/sql/01_raw/` | Loads the seven source files into Bronze |
+| `src/sql/02_clean/` | Builds the Silver tables |
+| `dbt/models/` | Builds the five dimensions, two facts, and reporting view |
+| `dbt/tests/` | Contains automated Gold grain and reconciliation tests |
+| `src/sql/03_analytics/` | Contains the four business-analysis queries |
+| `tests/` | Contains source, Silver, Gold, and business checks |
+| `docs/` | Contains profiling results, assumptions, and the detailed plan |
+| `.github/workflows/` | Contains repository validation and deployment workflow definitions |
 
 ## Source tables
 
-| Source file | Bronze table | Current rows |
+| Source file | Bronze table | Rows |
 | --- | --- | ---: |
 | `assessments.csv` | `assessment_raw` | 206 |
 | `courses.csv` | `courses_raw` | 22 |
@@ -72,94 +107,122 @@ Quality checks use `open_university.oulad_quality`.
 | `studentVle.csv` | `student_vle_raw` | 10,655,280 |
 | `vle.csv` | `vle_raw` | 6,364 |
 
-## Basic setup
+## Run order
 
 ### Requirements
 
-- A Databricks workspace
-- Permission to create a Unity Catalog catalog and schemas
+- Databricks workspace with Unity Catalog
+- Permission to create the project catalog and schemas
 - Access to the seven OULAD CSV files
-- GitHub access to this repository
+- Python and the packages in `dbt/requirements.txt` for local dbt use
 
-### 1. Clone the repository
+Do not commit source files, generated datasets, tokens, or credentials.
+
+### 1. Get the repository
 
 ```bash
 git clone https://github.com/ItsYangCoder/oulad-data-engineering-pipeline.git
 cd oulad-data-engineering-pipeline
 ```
 
-### 2. Add the project to Databricks
+For Databricks execution, connect the same repository through a Databricks Git folder.
 
-In Databricks, open **Workspace**, create or open a Git folder, and connect it to this repository.
+### 2. Set up the project
 
-### 3. Prepare the source files
-
-Upload the seven OULAD CSV files to an accessible Unity Catalog Volume. Before running the ingestion scripts, confirm that the source paths match your Databricks environment.
-
-Do not commit source CSV files, credentials, tokens, or generated datasets to GitHub.
-
-### 4. Run the completed setup and Bronze layer
-
-Run the files in this order:
-
-1. `src/sql/00_setup/00_init_setup.sql`
-2. The seven scripts in `src/sql/01_raw/`
-3. The validation scripts in `tests/01_source_checks/`
-
-The setup creates these schemas:
-
-- `open_university.oulad_bronze`
-- `open_university.oulad_silver`
-- `open_university.oulad_gold`
-- `open_university.oulad_quality`
-
-### 5. Run the Silver transformations
-
-After Bronze validation passes, run the seven files in:
+Run:
 
 ```text
-src/sql/02_clean/
+src/sql/00_setup/00_init_setup.sql
 ```
 
-Then run the applicable checks in:
+Update the source paths in the Bronze scripts for the target Databricks environment.
+
+### 3. Build and validate Bronze
+
+Run these scripts in order:
 
 ```text
-tests/02_clean_checks/
+src/sql/01_raw/assessment_raw.sql
+src/sql/01_raw/courses_raw.sql
+src/sql/01_raw/student_assessment_raw.sql
+src/sql/01_raw/student_info_raw.sql
+src/sql/01_raw/student_registration_raw.sql
+src/sql/01_raw/student_vle_raw.sql
+src/sql/01_raw/vle_raw.sql
 ```
 
-Run the checks in `tests/02_clean_checks/`, then build the Gold models from the
-`dbt/` directory:
+Then run the checks in `tests/01_source_checks/`.
+
+### 4. Build and validate Silver
+
+Run these scripts in order:
+
+```text
+src/sql/02_clean/courses_clean.sql
+src/sql/02_clean/assessment_clean.sql
+src/sql/02_clean/student_assessment_clean.sql
+src/sql/02_clean/student_info_clean.sql
+src/sql/02_clean/student_registration_clean.sql
+src/sql/02_clean/vle_clean.sql
+src/sql/02_clean/student_vle_clean.sql
+```
+
+Then run the checks in `tests/02_clean_checks/`.
+
+The Silver transformations use business-key `MERGE` operations. Missing rows in a partial delivery are not automatically deleted.
+
+### 5. Build and test Gold
+
+For local dbt execution, copy `dbt/profiles.yml.example` to `dbt/profiles.yml`, provide the required environment variables, then run:
 
 ```bash
+cd dbt
+python -m pip install -r requirements.txt
 dbt deps --profiles-dir .
 dbt build --profiles-dir . --target dev
 ```
 
-The Gold layer produces five dimensions, `fact_student_enrollment`,
-`fact_vle_interactions`, and `vw_student_outcomes`.
+The production Databricks Job uses project directory `dbt` and runs:
 
-## Important notes
+```bash
+dbt deps
+dbt build
+```
 
-- Bronze preserves the original source records and ingestion metadata.
-- Missing source values must remain unknown unless a documented rule says otherwise.
-- The Gold model is a fact constellation with five shared dimensions and two facts:
-  `fact_student_enrollment` and `fact_vle_interactions`.
-- `vw_student_outcomes` combines enrollment measures with an enrollment-level VLE summary for reporting.
-- CI and deployment workflows are not considered complete until their real validation and deployment jobs are enabled and tested.
+### 6. Run final checks and analytics
+
+Run:
+
+```text
+tests/03_gold_checks/
+tests/04_business_checks/
+src/sql/03_analytics/
+```
+
+## CI and deployment status
+
+GitHub Actions validates pull requests and pushes to `main` by scanning for secrets, blocking newly added destructive SQL, validating YAML and Databricks SQL, and parsing the dbt project.
+
+The Gold layer is currently deployed through the validated Databricks dbt Job. The GitHub deployment workflow remains disabled until its authentication, target, and release process are tested end to end.
+
+## Current limitations
+
+- Metabase visuals and their links or screenshots are not yet included.
+- Business interpretations, recommendations, and conclusions will be finalized after dashboard validation.
+- OULAD activity is measured using clicks and active days; clicks are not treated as study duration.
+- Missing demographic values and dates remain unknown unless a documented business rule provides a valid replacement.
 
 ## Documentation
 
 - [Pipeline plan](docs/pipeline_plan.md)
-- [Source assessment](docs/source_assessment.md)
+- [Source profiling results](docs/source_assessment.md)
 - [Project assumptions](docs/assumptions.md)
-- [Fact constellation diagram guide](docs/images/oulad_fact_constellation.md)
 
 ## Contribution workflow
 
-1. Pull the latest `main`.
-2. Create a task branch.
-3. Update only the assigned files and related checks.
-4. Run the code in Databricks.
-5. Record the actual validation results.
-6. Open a pull request into `main`.
-7. Request a teammate review before merging.
+1. Start from the latest `main` branch.
+2. Create a branch for one related change.
+3. Update the assigned files and their checks.
+4. Validate the change locally or in Databricks.
+5. Open a pull request and record real validation evidence.
+6. Merge only after the required checks pass.

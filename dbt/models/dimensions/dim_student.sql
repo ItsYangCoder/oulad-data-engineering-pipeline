@@ -1,14 +1,7 @@
 {{ config(enabled=true) }}
 
--- dbt/models/dimensions/dim_student.sql
--- Grain: one row per id_student
--- Source: open_university.oulad_silver.student_info_clean
--- Key method: md5 of id_student
--- Result: open_university.oulad_gold.dim_student
--- Note: only student identity is kept at this grain. Enrollment-dependent
--- attributes (final_result, studied_credits, num_of_prev_attempts, and
--- demographic profile) are intentionally excluded — they can vary per
--- enrollment and belong in fact_student_enrollment, not this dimension.
+-- Grain: one row per student.
+-- Enrollment-specific outcomes and demographics are stored outside this dimension.
 
 with source_students as (
 

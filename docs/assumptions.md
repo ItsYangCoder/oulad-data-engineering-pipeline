@@ -152,13 +152,20 @@ a module presentation is required.
 
 ## 13. Incremental Loading
 
-The current source delivery is treated as the initial batch.
+The current source delivery is treated as the initial batch. Bronze must preserve every successfully
+ingested source row so later transformations can reconcile against cumulative history.
 
-Incremental `COPY INTO` or `MERGE` logic will only be finalized when the
-new batch location, delivery pattern, and update behavior are known.
+Incremental `COPY INTO` or `MERGE` behavior will only be finalized when the new batch location,
+delivery pattern, update behavior, and delete semantics are known.
 
-Placeholder incremental commands will not be included in runnable Raw
-scripts.
+A row missing from a partial or changes-only batch is not a delete. Runnable transformations must not
+use `WHEN NOT MATCHED BY SOURCE THEN DELETE`, `INSERT OVERWRITE`, or another destructive replacement
+unless an independently validated complete snapshot or an explicit source delete event proves intent.
+
+For repeated student VLE keys, the pipeline must preserve the reviewed daily grain and reconcile both
+the number of contributing Bronze rows and total clicks before accepting the result.
+
+Placeholder incremental commands will not be included in runnable Raw scripts.
 
 ## 14. Assumption Review
 

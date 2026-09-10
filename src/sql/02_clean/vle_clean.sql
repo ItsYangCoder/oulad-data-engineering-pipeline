@@ -22,8 +22,8 @@ CREATE TABLE IF NOT EXISTS open_university.oulad_silver.vle_rejected (
   week_from_raw STRING,
   week_to_raw STRING,
   rejection_reason STRING,
-  clean_load_timestamp TIMESTAMP,
-  clean_load_date DATE
+  rejected_load_timestamp TIMESTAMP,
+  rejected_load_date DATE
 ) USING DELTA;
 
 -- Bronze is treated as cumulative history. Rows missing from one delivery are not automatic deletes.
@@ -100,8 +100,8 @@ WHEN NOT MATCHED THEN INSERT (
   week_from_raw,
   week_to_raw,
   rejection_reason,
-  clean_load_timestamp,
-  clean_load_date
+  rejected_load_timestamp,
+  rejected_load_date
 )
 VALUES (
   source.code_module_raw,

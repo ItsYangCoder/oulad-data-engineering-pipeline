@@ -5,7 +5,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
   group: oulad-production-deployment
@@ -19,9 +18,9 @@ jobs:
     environment: production
 
     env:
-      DATABRICKS_AUTH_TYPE: github-oidc
       DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
       DATABRICKS_CLIENT_ID: ${{ vars.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
       DATABRICKS_JOB_ID: ${{ vars.DATABRICKS_JOB_ID }}
 
     steps:
@@ -31,6 +30,7 @@ jobs:
           set -euo pipefail
           : "${DATABRICKS_HOST:?Missing DATABRICKS_HOST}"
           : "${DATABRICKS_CLIENT_ID:?Missing DATABRICKS_CLIENT_ID}"
+          : "${DATABRICKS_CLIENT_SECRET:?Missing DATABRICKS_CLIENT_SECRET}"
           : "${DATABRICKS_JOB_ID:?Missing DATABRICKS_JOB_ID}"
 
           if [[ "${GITHUB_REF_NAME}" != "main" ]]; then
@@ -39,7 +39,7 @@ jobs:
           fi
 
           if [[ -n "${DATABRICKS_TOKEN:-}" ]]; then
-            echo "DATABRICKS_TOKEN must not be configured. Use GitHub OIDC." >&2
+            echo "DATABRICKS_TOKEN must not be configured. Use service-principal OAuth." >&2
             exit 1
           fi
 

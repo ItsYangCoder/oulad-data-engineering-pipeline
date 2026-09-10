@@ -18,9 +18,9 @@ CREATE TABLE IF NOT EXISTS open_university.oulad_silver.vle_rejected (
   code_module STRING,
   code_presentation STRING,
   id_site_raw STRING,
-  activity_type_raw STRING,
-  week_from_raw STRING,
-  week_to_raw STRING,
+  activity_type STRING,
+  week_from STRING,
+  week_to STRING,
   rejection_reason STRING,
   clean_load_timestamp TIMESTAMP,
   clean_load_date DATE
@@ -88,17 +88,17 @@ USING (
 ON  target.code_module <=> source.code_module_raw
 AND target.code_presentation <=> source.code_presentation_raw
 AND target.id_site_raw <=> source.id_site_raw
-AND target.activity_type_raw <=> source.activity_type_raw
-AND target.week_from_raw <=> source.week_from_raw
-AND target.week_to_raw <=> source.week_to_raw
+AND target.activity_type <=> source.activity_type_raw
+AND target.week_from <=> source.week_from_raw
+AND target.week_to <=> source.week_to_raw
 AND target.rejection_reason = source.rejection_reason
 WHEN NOT MATCHED THEN INSERT (
   code_module,
   code_presentation,
   id_site_raw,
-  activity_type_raw,
-  week_from_raw,
-  week_to_raw,
+  activity_type,
+  week_from,
+  week_to,
   rejection_reason,
   clean_load_timestamp,
   clean_load_date

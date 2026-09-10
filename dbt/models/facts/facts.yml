@@ -19,3 +19,80 @@
 # Done when: tests match actual columns, catch violations, and pass on valid data.
 version: 2
 models: []
+
+  - name: fact_vle_interactions
+    description: "Daily VLE activity at one row per module, presentation, student, resource and relative day."
+    columns:
+      - name: code_module
+        description: "Module connected to the interaction."
+        tests:
+          - not_null
+      - name: code_presentation
+        description: "Presentation connected to the interaction."
+        tests:
+          - not_null
+      - name: id_student
+        description: "Student who used the resource."
+        tests:
+          - not_null
+      - name: id_site
+        description: "VLE resource used by the student."
+        tests:
+          - not_null
+      - name: date
+        description: "OULAD relative day when the activity happened."
+        tests:
+          - not_null
+      - name: sum_click
+        description: "Daily clicks already aggregated in the Silver layer."
+        tests:
+          - not_null
+      - name: student_key
+        description: "Foreign key to dim_student."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_student')
+              field: student_key
+      - name: course_key
+        description: "Foreign key to dim_course."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_course')
+              field: course_key
+      - name: presentation_key
+        description: "Foreign key to dim_module_presentation."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_module_presentation')
+              field: presentation_key
+      - name: demographics_key
+        description: "Foreign key to the demographic profile of the enrollment."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_demographics')
+              field: demographics_key
+      - name: date_key
+        description: "Foreign key to dim_date for the interaction relative day."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_date')
+              field: date_key
+      - name: activity_type
+        description: "Type of VLE resource; may be NULL when resource details are unavailable."
+      - name: resource_week_from
+        description: "Optional first week when the resource is available."
+      - name: resource_week_to
+        description: "Optional last week when the resource is available."
+      - name: mart_load_timestamp
+        description: "Timestamp when the Gold table was built."
+        tests:
+          - not_null
+      - name: mart_load_date
+        description: "Date when the Gold table was built."
+        tests:
+          - not_null

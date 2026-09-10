@@ -1,21 +1,83 @@
 -- File: 01_cohort_analysis.sql
--- Suggested branch: feature/cohort-analysis
--- Purpose: Compare enrollment outcomes across module-presentation cohorts.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: open_university.oulad_gold.vw_student_outcomes and relevant dimensions.
--- Output: Read-only result set for Metabase; no CREATE, MERGE, INSERT or table rebuild.
--- Grain / business key: One output row per selected cohort, with optional demographic grouping.
---
--- What to put in this file:
--- 1. Define a cohort using code_module and code_presentation; state any filters before calculating
---    totals.
--- 2. Count enrollment rows and each final_result category: Distinction, Pass, Fail and Withdrawn.
--- 3. Return enrollment_count, outcome counts and clearly named rates with an explicit denominator.
--- 4. Keep Unknown demographic groups and zero-activity enrollments; do not count detailed fact rows as
---    students.
--- 5. Use simple CTEs, readable aliases and a deterministic ORDER BY for a Metabase table or chart.
---
---
--- Done when: Outcome counts add up to the enrollment population; rates use the stated denominator;
---    tests/04_business_checks/01_cohort_checks.sql passes.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+-- Branch: feature/cohort-analysis
+-- Purpose: Compare outcomes by module-presentation cohort.
+
+WITH cohort_summary AS (
+    SELECT
+        code_module,
+        code_presentation,
+
+        COUNT(*) AS enrollment_count,
+
+        COUNT(*) FILTER (
+            WHERE final_result = 'Distinction'
+        ) AS distinction_count,
+
+        COUNT(*) FILTER (
+            WHERE final_result = 'Pass'
+        ) AS pass_count,
+
+        COUNT(*) FILTER (
+            WHERE final_result = 'Fail'
+        ) AS fail_count,
+
+        COUNT(*) FILTER (
+            WHERE final_result = 'Withdrawn'
+        ) AS withdrawn_count
+
+    FROM open_university.oulad_gold.vw_student_outcomes
+
+    GROUP BY
+        code_module,
+        code_presentation
+)
+
+SELECT
+    code_module,
+    code_presentation,
+
+    enrollment_count,
+
+    distinction_count,
+    pass_count,
+    fail_count,
+    withdrawn_count,
+
+    -- Check outcome totals
+    (
+        distinction_count
+        + pass_count
+        + fail_count
+        + withdrawn_count
+    ) AS outcome_total_count,
+
+    -- Outcome rates
+    ROUND(
+        100.0 * distinction_count
+        / NULLIF(enrollment_count, 0),
+        2
+    ) AS distinction_rate_pct,
+
+    ROUND(
+        100.0 * pass_count
+        / NULLIF(enrollment_count, 0),
+        2
+    ) AS pass_rate_pct,
+
+    ROUND(
+        100.0 * fail_count
+        / NULLIF(enrollment_count, 0),
+        2
+    ) AS fail_rate_pct,
+
+    ROUND(
+        100.0 * withdrawn_count
+        / NULLIF(enrollment_count, 0),
+        2
+    ) AS withdrawn_rate_pct
+
+FROM cohort_summary
+
+ORDER BY
+    code_module,
+    code_presentation;

@@ -35,6 +35,10 @@ flowchart TD
 
 The Gold layer is a **fact constellation**, not a single star schema, because two fact tables share five dimensions.
 
+![OULAD fact constellation ERD](docs/images/oulad_fact_constellation.png)
+
+[Open the interactive ERD in dbdiagram.io](https://dbdiagram.io/d/OULAD-Dimensional-Model-Fact-Constellation-6aa2df5afa33334712c0619c0)
+
 ### Dimensions
 
 | Model | Grain |
@@ -59,8 +63,8 @@ OULAD dates are relative day offsets from the module presentation start. They ar
 
 Schema references:
 
-- [Fact constellation guide](docs/images/oulad_fact_constellation.md)
-- [DBML definition](docs/images/oulad_fact_constellation.dbml)
+- [Fact constellation guide](docs/erd/oulad_fact_constellation.md)
+- [DBML definition](docs/erd/oulad_fact_constellation.dbml)
 
 ## Validated results
 

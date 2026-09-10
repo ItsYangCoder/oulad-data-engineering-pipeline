@@ -1,12 +1,11 @@
 -- Silver student VLE interactions
 -- Input: open_university.oulad_bronze.student_vle_raw
--- Output: open_university.oulad_silver.student_vle_clean
+-- Result: open_university.oulad_silver.student_vle_clean
 -- Grain / business key: One student-resource-day per presentation;
 --   (code_module, code_presentation, id_student, id_site, date).
 -- Load assumption: student_vle_raw is a complete current-source snapshot. Each run recomputes and
 --   replaces daily totals. Incremental accumulation is intentionally deferred until batch semantics
 --   and replay handling are defined.
--- ========================================================================================================
 
 CREATE TABLE IF NOT EXISTS open_university.oulad_silver.student_vle_clean (
   code_module STRING,

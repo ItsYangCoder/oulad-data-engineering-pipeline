@@ -1,26 +1,112 @@
--- File: 03_assessment_performance.sql
--- Suggested branch: feature/assessment-analysis
--- Purpose: Summarize scores, scoring coverage and submission patterns.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: open_university.oulad_gold.fact_assessments with relevant dimensions; vw_student_outcomes for
---    any enrollment-level comparison.
--- Output: Read-only result set for Metabase; no CREATE, MERGE, INSERT or table rebuild.
--- Grain / business key: One output row per chosen module-presentation and assessment type.
---
--- What to put in this file:
--- 1. Return result_count, scored_result_count, missing_score_count and AVG(score), excluding NULL
---    scores from the average.
--- 2. Keep 173 missing TMA scores visible in coverage counts; do not turn them into zero or automatic
---    failures.
--- 3. Separate CMA, TMA and Exam; document weighting before producing any weighted metric, rather than
---    adding incompatible weights.
--- 4. Only calculate lateness when a valid deadline/submission day exists and a banked-result rule is
---    documented.
--- 5. State any passing-score threshold before computing a pass rate; use scored records as the stated
---    denominator.
--- 6. Aggregate facts separately to enrollment grain before comparing scores with VLE engagement.
---
---
--- Done when: Counts, scored denominators and average scores reconcile to the fact;
---    tests/04_business_checks/03_assessment_checks.sql passes.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+-- Purpose: Summarize assessment performance, score coverage and submission patterns.
+-- Input: open_university.oulad_gold.fact_assessments.
+-- Result: Read-only result set for Metabase; no CREATE, MERGE, INSERT or table rebuild.
+-- Grain / business key: One output row per module-presentation and assessment type.
+-- Metric definitions / business rules:
+-- * result_count = all assessment-result rows, including rows with a missing score.
+-- * scored_result_count = COUNT(score); NULL scores are excluded from score metrics.
+-- * missing_score_count = result_count - scored_result_count.
+-- * avg_score = AVG(score), which ignores NULL scores by SQL semantics.
+-- * Assessment types remain separate: Exam, TMA and CMA.
+-- * The current source batch has 173 missing TMA scores. Missing scores stay visible
+--   in coverage and are not converted to zero or an automatic failure.
+-- * No pass threshold is defined in pipeline_plan.md or assumptions.md, so no pass
+--   rate is calculated here.
+-- * assessment weight is retained as avg_assessment_weight for context only. No
+--   weighted score is calculated because no approved weighted-score business rule
+--   is documented.
+-- * late_result_count uses date_submitted > assessment_date only when both relative
+--   days are non-NULL. Unknown deadline/submission dates are not treated as late.
+-- * banked_result_count reports is_banked = 1 but does not exclude or alter those
+--   results because no banked-result exclusion rule is documented.
+
+WITH fact_results AS (
+    -- Read the Gold fact table.
+    -- Reads the validated fact table as the single source of truth for
+    -- assessment analytics. No source data is modified in this layer.
+    SELECT
+        id_assessment,
+        id_student,
+        code_module,
+        code_presentation,
+        assessment_type,
+        assessment_date,
+        date_submitted,
+        weight,
+        score,
+        is_banked
+    FROM open_university.oulad_gold.fact_assessments
+),
+
+assessment_performance AS (
+    -- Group the records and calculate the totals.
+    -- Groups results by module, presentation and assessment type, then
+    -- calculates coverage, score and submission-behavior metrics.
+    -- COUNT(*) keeps all result rows, while COUNT(score) excludes NULL scores.
+    -- AVG(score) calculates the average using only known scores.
+    SELECT
+        code_module,
+        code_presentation,
+        assessment_type,
+        COUNT(*) AS result_count,
+        COUNT(score) AS scored_result_count,
+        COUNT(*) - COUNT(score) AS missing_score_count,
+        AVG(score) AS avg_score,
+        AVG(weight) AS avg_assessment_weight,
+        SUM(CASE WHEN is_banked = 1 THEN 1 ELSE 0 END) AS banked_result_count,
+        SUM(
+            CASE
+                WHEN date_submitted IS NOT NULL
+                 AND assessment_date IS NOT NULL
+                THEN 1
+                ELSE 0
+            END
+        ) AS lateness_eligible_count,
+        SUM(
+            CASE
+                WHEN date_submitted IS NOT NULL
+                 AND assessment_date IS NOT NULL
+                 AND date_submitted > assessment_date
+                THEN 1
+                ELSE 0
+            END
+        ) AS late_result_count
+    FROM fact_results
+    GROUP BY
+        code_module,
+        code_presentation,
+        assessment_type
+)
+
+-- Return the final report.
+-- Returns the analytics-ready metrics for dashboarding and interpretation.
+-- The late-result rate uses only records with known submission and assessment
+-- dates. Unknown dates remain outside the rate instead of being classified as late.
+SELECT
+    code_module,
+    code_presentation,
+    assessment_type,
+    result_count,
+    scored_result_count,
+    missing_score_count,
+    avg_score,
+    avg_assessment_weight,
+    banked_result_count,
+    lateness_eligible_count,
+    late_result_count,
+    CASE
+        -- avoids division by zero when no date pair is eligible.
+        WHEN lateness_eligible_count = 0 THEN NULL
+        ELSE late_result_count * 100.0 / lateness_eligible_count
+    END AS late_result_rate_pct
+FROM assessment_performance
+ORDER BY
+    code_module,
+    code_presentation,
+    -- keeps assessment types in a consistent business order.
+    CASE assessment_type
+        WHEN 'Exam' THEN 1
+        WHEN 'TMA' THEN 2
+        WHEN 'CMA' THEN 3
+        ELSE 4
+    END;

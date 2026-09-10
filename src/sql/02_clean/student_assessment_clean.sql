@@ -1,11 +1,8 @@
--- ============================================================
 -- Silver: Student Assessment Clean
 -- Source: open_university.oulad_bronze.student_assessment_raw
 -- Target: open_university.oulad_silver.student_assessment_clean
---
 -- Grain: one student result per assessment
 -- Business key: (id_assessment, id_student)
--- ============================================================
 
 CREATE TABLE IF NOT EXISTS open_university.oulad_silver.student_assessment_clean (
     id_assessment BIGINT,

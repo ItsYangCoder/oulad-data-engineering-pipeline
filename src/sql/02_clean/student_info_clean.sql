@@ -1,100 +1,6 @@
--- ========================================================================================================
--- File: student_info_clean.sql
--- Branch: feature/clean-students
---
--- Purpose:
---    Clean and prepare the complete student enrollment population, demographic attributes,
---    and final academic outcomes for the Silver layer.
---
--- Input:
---    open_university.oulad_bronze.student_info_raw
---
--- Output:
---    open_university.oulad_silver.student_info_clean
---
--- Grain / Business Key:
---    One student enrollment in one module presentation;
---    (code_module, code_presentation, id_student)
---
--- Expected Clean Row Count:
---    32,593 rows for the current source delivery.
---
--- Transformation / Data Quality Decisions:
---    1. The complete enrollment key is code_module + code_presentation + id_student.
---       Records are not deduplicated by id_student alone because the same student may enroll
---       in multiple module presentations.
---
---    2. Source placeholder values (?, blank, NA, N/A, NULL text) are converted to SQL NULL
---       only in the Silver layer. Bronze values remain unchanged.
---
---    3. code_module and code_presentation are trimmed and standardized to uppercase.
---
---    4. id_student is cast to BIGINT.
---       num_of_prev_attempts and studied_credits are cast to INT using TRY_CAST.
---
---    5. Text categories are trimmed and standardized without changing their business meaning.
---       gender and disability are standardized to uppercase codes.
---
---    6. final_result is standardized to the agreed categories:
---       Distinction, Fail, Pass, and Withdrawn.
---
---    7. The source imd_band category '10-20' is standardized to '10-20%' so that it follows
---       the same percentage-band format as the other IMD categories.
---
---    8. The 1,111 documented missing imd_band values are preserved as SQL NULL.
---       They are not imputed with a default, mode, regional value, or 'Unknown' in the stored
---       Silver table.
---
---    9. No assessment or VLE activity is required for an enrollment to remain in this table.
---       The transformation starts from the complete student_info_raw population so students
---       with zero recorded activity are not lost.
---
---   10. Required business-key values are validated before MERGE.
---       Rows whose normalized code_module, code_presentation, or id_student is NULL are
---       reported and excluded from the MERGE source. This prevents NULL-key rows from being
---       inserted repeatedly because NULL values do not match normally in a MERGE condition.
---
---   11. Negative num_of_prev_attempts and studied_credits are considered invalid and are
---       detected by the related Silver validation checks.
---
---   12. clean_load_timestamp and clean_load_date are added for Silver-layer auditability.
---
--- Idempotency / Repeatability:
---    The target is loaded with MERGE using the complete enrollment business key.
---    Existing enrollment records are updated and new enrollment records are inserted.
---
---    Rows with incomplete required business keys are excluded before MERGE so they cannot
---    create repeated NULL-key records on reruns.
---
--- Validation Expectations for the Current Batch:
---    - student_info_clean row count = 32,593
---    - invalid required business keys = 0
---    - incomplete Silver business keys = 0
---    - duplicate complete business keys = 0
---    - Bronze enrollment keys missing from Silver = 0
---    - unexpected Silver enrollment keys = 0
---    - imd_band NULL count = 1,111
---    - unstandardized '10-20' imd_band values = 0
---    - invalid gender, disability, final_result, or imd_band categories = 0
---    - negative num_of_prev_attempts = 0
---    - negative studied_credits = 0
---    - missing audit fields = 0
---    - student_info_clean -> courses_clean orphan count = 0
---    - zero-activity enrollments missing from Silver = 0
---
--- Important Business Rules:
---    - A student may appear in more than one module presentation.
---    - Missing demographic information is preserved rather than invented.
---    - final_result remains presentation-specific enrollment information.
---    - The current fixed validation counts apply to this source delivery and should be
---      reviewed when a new batch is introduced.
---
--- ========================================================================================================
-
-
--- ========================================================================================================
--- STEP 0: CREATE THE SILVER TARGET TABLE
--- ========================================================================================================
+-- Cleans student enrollment and demographic data for the Silver layer.
+-- One row represents one student in one module presentation.
+-- Missing demographic values stay NULL, and MERGE prevents duplicate enrollments.
 
 CREATE TABLE IF NOT EXISTS
     open_university.oulad_silver.student_info_clean
@@ -117,22 +23,15 @@ CREATE TABLE IF NOT EXISTS
 USING DELTA;
 
 
--- ========================================================================================================
--- STEP 1: VALIDATE REQUIRED BUSINESS KEYS BEFORE MERGE
--- ========================================================================================================
---
+-- Step 1: Validate required business keys before merge
 -- Required business-key components are normalized using the same rules applied by the
 -- Silver transformation.
---
 -- Rows where any normalized key component becomes NULL are reported here before loading.
---
 -- These rows must not participate in the MERGE because normal SQL equality does not match
 -- NULL values. Allowing incomplete keys into the MERGE could therefore insert another copy
 -- of the same invalid source row on every rerun.
---
 -- Expected current-batch result:
 --    invalid_business_key_rows = 0
--- ========================================================================================================
 
 WITH normalized_keys AS (
 
@@ -171,9 +70,7 @@ WHERE code_module IS NULL
    OR id_student IS NULL;
 
 
--- ========================================================================================================
--- STEP 2: NORMALIZE, TYPE, AND PREPARE SOURCE DATA
--- ========================================================================================================
+-- Step 2: Normalize, type, and prepare source data
 
 MERGE INTO open_university.oulad_silver.student_info_clean AS target
 
@@ -346,18 +243,14 @@ USING (
 ) AS source
 
 
--- ========================================================================================================
--- STEP 3: MATCH USING THE COMPLETE ENROLLMENT KEY
--- ========================================================================================================
+-- Step 3: Match using the complete enrollment key
 
 ON  target.code_module       = source.code_module
 AND target.code_presentation = source.code_presentation
 AND target.id_student        = source.id_student
 
 
--- ========================================================================================================
--- STEP 4: UPDATE EXISTING ENROLLMENTS
--- ========================================================================================================
+-- Step 4: Update existing enrollments
 
 WHEN MATCHED THEN UPDATE SET
 
@@ -374,9 +267,7 @@ WHEN MATCHED THEN UPDATE SET
     target.clean_load_date      = source.clean_load_date
 
 
--- ========================================================================================================
--- STEP 5: INSERT NEW ENROLLMENTS
--- ========================================================================================================
+-- Step 5: Insert new enrollments
 
 WHEN NOT MATCHED THEN INSERT
 (

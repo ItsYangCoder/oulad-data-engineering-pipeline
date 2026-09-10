@@ -1,31 +1,58 @@
-{{ config(enabled=false) }}
+{{ config(enabled=true) }}
 
--- File: dim_demographics.sql
--- Suggested branch: feature/build-dimensions
--- Purpose: Store reusable combinations of enrollment demographic attributes.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: Silver student_info_clean.
--- Output: open_university.oulad_gold.dim_demographics
--- Grain / business key: One row per distinct combination of gender, region, highest_education,
---    imd_band, age_band and disability.
---
--- What to put in this file:
--- 1. Write a dbt SELECT with named CTEs, source() for Silver inputs and ref() for other Gold models;
---    dbt manages the target relation.
--- 2. Select distinct six-column demographic profiles and expose a stable demographics_key.
--- 3. Handle NULL consistently in key generation and use null-safe matching when resolving a profile
---    from an enrollment.
--- 4. Keep NULL imd_band in stored data; a reporting label may display Unknown.
--- 5. Do not include final_result, studied_credits or num_of_prev_attempts in the demographic profile.
--- 6. Resolve each fact's profile from the matching student-module-presentation enrollment, not from
---    id_student alone.
--- 7. Use consistent, repeatable dimension keys and mart_load_timestamp/mart_load_date audit fields; do
---    not regenerate keys in a different order on reruns.
--- 8. Remove enabled=false only when this model and its dependencies are implemented; add
---    documentation/tests in the adjacent YAML.
---
--- This file is one of the five required dimensions.
---
--- Done when: profile combinations and demographics_key are unique; every enrollment resolves to one
---    profile, including NULL imd_band.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+-- dbt/models/dimensions/dim_demographics.sql
+-- Grain: one row per distinct combination of gender, region, highest_education,
+-- imd_band, age_band, disability
+-- Source: open_university.oulad_silver.student_info_clean
+-- Key method: md5 of the six attributes, each null-safe-coalesced to a
+-- placeholder token before hashing (same pattern used in courses_clean.sql's
+-- quarantine_id generation) so two enrollments with an identical NULL imd_band
+-- resolve to the same demographics_key rather than two different keys.
+-- Result: open_university.oulad_gold.dim_demographics
+-- Note: NULL imd_band is preserved as-is in the stored profile (requirement #4);
+-- only the key generation coalesces NULLs to a placeholder, the actual column
+-- values are not modified. Reporting layers may choose to display "Unknown"
+-- without altering this stored value.
+-- Note: final_result, studied_credits, num_of_prev_attempts deliberately
+-- excluded — these are enrollment outcomes, not demographic attributes.
+-- Note: student_info_clean grain is one row per enrollment (code_module,
+-- code_presentation, id_student), so the same demographic profile can and
+-- will repeat across many enrollments — select distinct is required here to
+-- collapse those repeats into one profile row.
+
+with source_demographics as (
+
+    select distinct
+        gender,
+        region,
+        highest_education,
+        imd_band,
+        age_band,
+        disability
+
+    from {{ source('oulad_silver', 'student_info_clean') }}
+
+)
+
+select
+    md5(
+        concat_ws(
+            '||',
+            coalesce(gender, '__NULL__'),
+            coalesce(region, '__NULL__'),
+            coalesce(highest_education, '__NULL__'),
+            coalesce(imd_band, '__NULL__'),
+            coalesce(age_band, '__NULL__'),
+            coalesce(disability, '__NULL__')
+        )
+    )                    as demographics_key,
+    gender,
+    region,
+    highest_education,
+    imd_band,
+    age_band,
+    disability,
+    current_timestamp()  as mart_load_timestamp,
+    current_date()       as mart_load_date
+
+from source_demographics

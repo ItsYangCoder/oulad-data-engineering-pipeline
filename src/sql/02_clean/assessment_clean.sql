@@ -1,11 +1,8 @@
--- ============================================================
 -- Silver: Assessment Clean
 -- Source: open_university.oulad_bronze.assessment_raw
 -- Target: open_university.oulad_silver.assessment_clean
---
 -- Grain: one row per assessment
 -- Business key: id_assessment
--- ============================================================
 
 CREATE TABLE IF NOT EXISTS open_university.oulad_silver.assessment_clean (
     code_module STRING,

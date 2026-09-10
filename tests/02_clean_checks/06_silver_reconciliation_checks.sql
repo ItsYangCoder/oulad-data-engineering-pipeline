@@ -88,3 +88,76 @@ SELECT *,
     THEN 'PASS' ELSE 'FAIL'
   END AS vle_reconciliation_status
 FROM vle_metrics;
+
+-- Independent failure gate for student VLE coverage.
+-- The expected side is aggregated directly from Bronze and does not reuse the Silver MERGE result.
+WITH bronze_daily AS (
+  SELECT
+    UPPER(TRIM(CAST(code_module AS STRING))) AS code_module,
+    UPPER(TRIM(CAST(code_presentation AS STRING))) AS code_presentation,
+    TRY_CAST(id_student AS BIGINT) AS id_student,
+    TRY_CAST(id_site AS BIGINT) AS id_site,
+    TRY_CAST(date AS INT) AS date,
+    COUNT(*) AS expected_source_rows,
+    CAST(SUM(TRY_CAST(sum_click AS BIGINT)) AS BIGINT) AS expected_clicks
+  FROM open_university.oulad_bronze.student_vle_raw
+  WHERE code_module IS NOT NULL
+    AND code_presentation IS NOT NULL
+    AND TRY_CAST(id_student AS BIGINT) IS NOT NULL
+    AND TRY_CAST(id_site AS BIGINT) IS NOT NULL
+    AND TRY_CAST(date AS INT) IS NOT NULL
+    AND TRY_CAST(sum_click AS BIGINT) >= 0
+  GROUP BY
+    UPPER(TRIM(CAST(code_module AS STRING))),
+    UPPER(TRIM(CAST(code_presentation AS STRING))),
+    TRY_CAST(id_student AS BIGINT),
+    TRY_CAST(id_site AS BIGINT),
+    TRY_CAST(date AS INT)
+),
+missing_or_changed AS (
+  SELECT
+    b.code_module,
+    b.code_presentation,
+    b.id_student,
+    b.id_site,
+    b.date
+  FROM bronze_daily b
+  LEFT JOIN open_university.oulad_silver.student_vle_clean s
+    ON s.code_module = b.code_module
+   AND s.code_presentation = b.code_presentation
+   AND s.id_student = b.id_student
+   AND s.id_site = b.id_site
+   AND s.date = b.date
+  WHERE s.id_student IS NULL
+     OR s.source_row_count <> b.expected_source_rows
+     OR s.sum_click <> b.expected_clicks
+)
+SELECT assert_true(
+  (SELECT COUNT(*) FROM missing_or_changed) = 0,
+  'Silver student VLE is missing a Bronze daily key or has changed row/click totals.'
+) AS student_vle_independent_gate;
+
+-- Independent failure gate for VLE resource key coverage.
+WITH bronze_resource_keys AS (
+  SELECT DISTINCT
+    UPPER(TRIM(CAST(code_module AS STRING))) AS code_module,
+    UPPER(TRIM(CAST(code_presentation AS STRING))) AS code_presentation,
+    TRY_CAST(id_site AS BIGINT) AS id_site
+  FROM open_university.oulad_bronze.vle_raw
+  WHERE code_module IS NOT NULL
+    AND code_presentation IS NOT NULL
+    AND TRY_CAST(id_site AS BIGINT) IS NOT NULL
+),
+missing_resources AS (
+  SELECT b.*
+  FROM bronze_resource_keys b
+  LEFT JOIN open_university.oulad_silver.vle_clean s
+    ON s.code_module = b.code_module
+   AND s.code_presentation = b.code_presentation
+   AND s.id_site = b.id_site
+  WHERE s.id_site IS NULL
+)
+SELECT assert_true(
+  (SELECT COUNT(*) FROM missing_resources) = 0,
+  'Silver VLE resources are missing one or more valid Bronze keys.'
+) AS vle_resource_independent_gate;

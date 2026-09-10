@@ -32,10 +32,31 @@ jobs:
 
     steps:
       - name: Get the exact revision
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+
+      - name: Scan every committed file for secrets
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Block destructive data statements
+        run: |
+          if grep -RInE --include="*.sql"             "^[[:space:]]*(WHEN[[:space:]]+NOT[[:space:]]+MATCHED[[:space:]]+BY[[:space:]]+SOURCE[[:space:]]+THEN[[:space:]]+DELETE|INSERT[[:space:]]+OVERWRITE|DELETE[[:space:]]+FROM|TRUNCATE[[:space:]]+TABLE|DROP[[:space:]]+TABLE|CREATE[[:space:]]+OR[[:space:]]+REPLACE[[:space:]]+TABLE)"             src/sql dbt/models; then
+            echo "Destructive SQL is blocked. Use a reviewed non-destructive MERGE or explicit delete-event design."
+            exit 1
+          fi
+
+      - name: Require active dbt data tests
+        run: |
+          if grep -RInF "{{ config(enabled=false) }}" dbt/tests; then
+            echo "A disabled dbt data test was found. CI cannot treat placeholder tests as coverage."
+            exit 1
+          fi
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
           cache: pip

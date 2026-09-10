@@ -3,9 +3,9 @@
 -- Result: open_university.oulad_silver.student_vle_clean
 -- Grain / business key: One student-resource-day per presentation;
 --   (code_module, code_presentation, id_student, id_site, date).
--- Load assumption: student_vle_raw is a complete current-source snapshot. Each run recomputes and
---   replaces daily totals. Incremental accumulation is intentionally deferred until batch semantics
---   and replay handling are defined.
+-- Bronze must preserve all successfully ingested rows. The MERGE updates keys from that cumulative
+-- history and keeps target keys that are absent from the current input. Missing keys are not treated
+-- as deletes because an incremental delivery may be partial.
 
 CREATE TABLE IF NOT EXISTS open_university.oulad_silver.student_vle_clean (
   code_module STRING,
@@ -19,8 +19,8 @@ CREATE TABLE IF NOT EXISTS open_university.oulad_silver.student_vle_clean (
   clean_load_date DATE
 ) USING DELTA;
 
--- Invalid required keys, failed casts and negative clicks are retained here for investigation. This
--- table is replaced on each full-source run so replaying the same snapshot is idempotent.
+-- Invalid required keys, failed casts and negative clicks are retained for investigation.
+-- Replaying the same invalid record does not add another copy.
 CREATE TABLE IF NOT EXISTS open_university.oulad_silver.student_vle_rejected (
   code_module_raw STRING,
   code_presentation_raw STRING,
@@ -116,8 +116,29 @@ SELECT
   END AS rejection_reason
 FROM casted;
 
-INSERT OVERWRITE open_university.oulad_silver.student_vle_rejected
-SELECT
+MERGE INTO open_university.oulad_silver.student_vle_rejected AS target
+USING (
+  SELECT DISTINCT
+    code_module_raw,
+    code_presentation_raw,
+    id_student_raw,
+    id_site_raw,
+    date_raw,
+    sum_click_raw,
+    rejection_reason,
+    CURRENT_TIMESTAMP() AS clean_load_timestamp,
+    CURRENT_DATE() AS clean_load_date
+  FROM student_vle_typed_current_batch
+  WHERE rejection_reason IS NOT NULL
+) AS source
+ON  target.code_module_raw <=> source.code_module_raw
+AND target.code_presentation_raw <=> source.code_presentation_raw
+AND target.id_student_raw <=> source.id_student_raw
+AND target.id_site_raw <=> source.id_site_raw
+AND target.date_raw <=> source.date_raw
+AND target.sum_click_raw <=> source.sum_click_raw
+AND target.rejection_reason = source.rejection_reason
+WHEN NOT MATCHED THEN INSERT (
   code_module_raw,
   code_presentation_raw,
   id_student_raw,
@@ -125,10 +146,49 @@ SELECT
   date_raw,
   sum_click_raw,
   rejection_reason,
-  CURRENT_TIMESTAMP() AS clean_load_timestamp,
-  CURRENT_DATE() AS clean_load_date
-FROM student_vle_typed_current_batch
-WHERE rejection_reason IS NOT NULL;
+  clean_load_timestamp,
+  clean_load_date
+)
+VALUES (
+  source.code_module_raw,
+  source.code_presentation_raw,
+  source.id_student_raw,
+  source.id_site_raw,
+  source.date_raw,
+  source.sum_click_raw,
+  source.rejection_reason,
+  source.clean_load_timestamp,
+  source.clean_load_date
+);
+
+-- Stop instead of replacing an existing daily total with a smaller partial-batch value.
+SELECT assert_true(
+  (
+    SELECT COUNT(*)
+    FROM (
+      SELECT
+        code_module,
+        code_presentation,
+        id_student,
+        id_site,
+        date,
+        CAST(SUM(sum_click) AS BIGINT) AS sum_click,
+        COUNT(*) AS source_row_count
+      FROM student_vle_typed_current_batch
+      WHERE rejection_reason IS NULL
+      GROUP BY code_module, code_presentation, id_student, id_site, date
+    ) AS source
+    INNER JOIN open_university.oulad_silver.student_vle_clean AS target
+      ON target.code_module = source.code_module
+     AND target.code_presentation = source.code_presentation
+     AND target.id_student = source.id_student
+     AND target.id_site = source.id_site
+     AND target.date = source.date
+    WHERE source.source_row_count < target.source_row_count
+       OR source.sum_click < target.sum_click
+  ) = 0,
+  'Student VLE source is smaller than stored totals for an existing key. Check for a partial or incomplete batch.'
+);
 
 MERGE INTO open_university.oulad_silver.student_vle_clean AS target
 USING (
@@ -183,8 +243,7 @@ VALUES (
   source.source_row_count,
   source.clean_load_timestamp,
   source.clean_load_date
-)
--- Because Bronze is defined above as a complete snapshot, remove daily keys no longer present in it.
-WHEN NOT MATCHED BY SOURCE THEN DELETE;
+);
+-- Keep unmatched target rows. A missing key in a partial batch is not a delete.
 
 DROP VIEW IF EXISTS student_vle_typed_current_batch;

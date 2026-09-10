@@ -18,10 +18,10 @@ jobs:
     environment: production
 
     env:
-      DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
-      DATABRICKS_CLIENT_ID: ${{ vars.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST || secrets.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ vars.DATABRICKS_CLIENT_ID || secrets.DATABRICKS_CLIENT_ID }}
       DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
-      DATABRICKS_JOB_ID: ${{ vars.DATABRICKS_JOB_ID }}
+      DATABRICKS_JOB_ID: ${{ vars.DATABRICKS_JOB_ID || secrets.DATABRICKS_JOB_ID }}
 
     steps:
       - name: Validate deployment configuration

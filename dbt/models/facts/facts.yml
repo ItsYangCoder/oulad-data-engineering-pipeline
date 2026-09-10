@@ -16,83 +16,119 @@
 #    dbt version's syntax. Composite uniqueness/reconciliation lives in dbt/tests/.
 # 6. Do not add an enrollment fact; enrollment reporting uses vw_student_outcomes.
 #
-# Done when: tests match actual columns, catch violations, and pass on valid data.
-version: 2
-models: []
+# Done when: tests match actual columns, catch violations, and pass on valid data.version: 2
 
-  - name: fact_vle_interactions
-    description: "Daily VLE activity at one row per module, presentation, student, resource and relative day."
+models:
+  - name: fact_assessments
+    description: "Student assessment results at one row per (id_assessment, id_student)."
+
     columns:
-      - name: code_module
-        description: "Module connected to the interaction."
+      - name: id_assessment
+        description: "Assessment business-key component from assessment_clean."
         tests:
           - not_null
-      - name: code_presentation
-        description: "Presentation connected to the interaction."
-        tests:
-          - not_null
+
       - name: id_student
-        description: "Student who used the resource."
+        description: "Student business-key component from student_assessment_clean."
         tests:
           - not_null
-      - name: id_site
-        description: "VLE resource used by the student."
+
+      - name: code_module
+        description: "Module code from the assessment definition."
         tests:
           - not_null
-      - name: date
-        description: "OULAD relative day when the activity happened."
+
+      - name: code_presentation
+        description: "Presentation code from the assessment definition."
         tests:
           - not_null
-      - name: sum_click
-        description: "Daily clicks already aggregated in the Silver layer."
-        tests:
-          - not_null
+
       - name: student_key
         description: "Foreign key to dim_student."
         tests:
           - not_null
           - relationships:
-              to: ref('dim_student')
-              field: student_key
+              arguments:
+                to: ref('dim_student')
+                field: student_key
+
       - name: course_key
         description: "Foreign key to dim_course."
         tests:
           - not_null
           - relationships:
-              to: ref('dim_course')
-              field: course_key
+              arguments:
+                to: ref('dim_course')
+                field: course_key
+
       - name: presentation_key
         description: "Foreign key to dim_module_presentation."
         tests:
           - not_null
           - relationships:
-              to: ref('dim_module_presentation')
-              field: presentation_key
-      - name: demographics_key
-        description: "Foreign key to the demographic profile of the enrollment."
-        tests:
-          - not_null
-          - relationships:
-              to: ref('dim_demographics')
-              field: demographics_key
+              arguments:
+                to: ref('dim_module_presentation')
+                field: presentation_key
+
       - name: date_key
-        description: "Foreign key to dim_date for the interaction relative day."
+        description: "Foreign key to dim_date for the submission relative day; nullable when date_submitted is unknown."
         tests:
-          - not_null
           - relationships:
-              to: ref('dim_date')
-              field: date_key
-      - name: activity_type
-        description: "Type of VLE resource; may be NULL when resource details are unavailable."
-      - name: resource_week_from
-        description: "Optional first week when the resource is available."
-      - name: resource_week_to
-        description: "Optional last week when the resource is available."
-      - name: mart_load_timestamp
-        description: "Timestamp when the Gold table was built."
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+
+      - name: demographics_key
+        description: "Foreign key to the enrollment-level demographic profile; nullable when no matching enrollment profile exists."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_demographics')
+                field: demographics_key
+
+      - name: assessment_type
+        description: "Assessment type: Exam, TMA or CMA."
         tests:
           - not_null
+
+      - name: assessment_date
+        description: "Assessment deadline as the OULAD relative day; may be NULL for assessments without a supplied deadline."
+
+      - name: date_submitted
+        description: "Submission day as an OULAD relative day; nullable when the source is missing."
+
+      - name: weight
+        description: "Assessment weight."
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 100
+
+      - name: score
+        description: "Student assessment score; expected NULL values are retained."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 100
+                inclusive: true
+
+      - name: is_banked
+        description: "OULAD banked-result flag."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+
+      - name: mart_load_timestamp
+        description: "Timestamp when the Gold fact was loaded."
+        tests:
+          - not_null
+
       - name: mart_load_date
-        description: "Date when the Gold table was built."
+        description: "Date when the Gold fact was loaded."
         tests:
           - not_null

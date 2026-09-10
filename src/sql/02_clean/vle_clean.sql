@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS open_university.oulad_silver.vle_rejected (
   clean_load_date DATE
 ) USING DELTA;
 
+-- Bronze is treated as cumulative history. Rows missing from one delivery are not automatic deletes.
 CREATE OR REPLACE TEMP VIEW vle_typed_current_batch AS
 WITH normalized AS (
   SELECT
@@ -68,12 +69,51 @@ SELECT *,
   END AS rejection_reason
 FROM casted;
 
-INSERT OVERWRITE open_university.oulad_silver.vle_rejected
-SELECT code_module_raw, code_presentation_raw, id_site_raw, activity_type_raw,
-       week_from_raw, week_to_raw, rejection_reason,
-       CURRENT_TIMESTAMP(), CURRENT_DATE()
-FROM vle_typed_current_batch
-WHERE rejection_reason IS NOT NULL;
+-- Keep unique rejected records instead of replacing the previous rejection history.
+MERGE INTO open_university.oulad_silver.vle_rejected AS target
+USING (
+  SELECT DISTINCT
+    code_module_raw,
+    code_presentation_raw,
+    id_site_raw,
+    activity_type_raw,
+    week_from_raw,
+    week_to_raw,
+    rejection_reason,
+    CURRENT_TIMESTAMP() AS clean_load_timestamp,
+    CURRENT_DATE() AS clean_load_date
+  FROM vle_typed_current_batch
+  WHERE rejection_reason IS NOT NULL
+) AS source
+ON  target.code_module_raw <=> source.code_module_raw
+AND target.code_presentation_raw <=> source.code_presentation_raw
+AND target.id_site_raw <=> source.id_site_raw
+AND target.activity_type_raw <=> source.activity_type_raw
+AND target.week_from_raw <=> source.week_from_raw
+AND target.week_to_raw <=> source.week_to_raw
+AND target.rejection_reason = source.rejection_reason
+WHEN NOT MATCHED THEN INSERT (
+  code_module_raw,
+  code_presentation_raw,
+  id_site_raw,
+  activity_type_raw,
+  week_from_raw,
+  week_to_raw,
+  rejection_reason,
+  clean_load_timestamp,
+  clean_load_date
+)
+VALUES (
+  source.code_module_raw,
+  source.code_presentation_raw,
+  source.id_site_raw,
+  source.activity_type_raw,
+  source.week_from_raw,
+  source.week_to_raw,
+  source.rejection_reason,
+  source.clean_load_timestamp,
+  source.clean_load_date
+);
 
 MERGE INTO open_university.oulad_silver.vle_clean AS target
 USING (
@@ -116,7 +156,7 @@ WHEN NOT MATCHED THEN INSERT (
   source.code_module, source.code_presentation, source.id_site, source.activity_type,
   source.week_from, source.week_to, source.is_valid_date_range, source.has_valid_business_keys,
   source.clean_load_timestamp, source.clean_load_date
-)
-WHEN NOT MATCHED BY SOURCE THEN DELETE;
+);
+-- Keep unmatched target rows. A missing resource in a partial batch is not a delete.
 
 DROP VIEW IF EXISTS vle_typed_current_batch;

@@ -15,6 +15,20 @@ The repository currently includes:
 
 Work that is still in progress is not presented as completed in this README.
 
+## Why we use dbt
+
+This project uses dbt to manage the transformation logic in the Gold layer as version-controlled, reviewable code.
+
+Instead of creating transformations manually in Databricks and leaving the logic only inside the database, dbt allows the team to:
+
+- keep the SQL models in GitHub;
+- review and track changes through pull requests;
+- define dependencies between models with `source()` and `ref()`;
+- run data-quality tests on the models; and
+- rebuild the same transformations consistently in another environment.
+
+The database stores the created tables and views. dbt stores and runs the transformation instructions that create or update them. Jinja and other dbt features support the models, but the main purpose is to make data transformations reproducible, testable, and easier for a team to maintain.
+
 ## Current architecture
 
 ```text

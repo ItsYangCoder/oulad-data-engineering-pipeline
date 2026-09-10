@@ -108,9 +108,12 @@ jobs:
             echo "Checking ${file}"
             temp_file="$(mktemp --suffix=.sql)"
 
-            # SQLFluff does not parse this valid Databricks DROP VIEW statement yet.
-            # Remove only that exact statement from the temporary copy.
-            sed '/^[[:space:]]*DROP VIEW IF EXISTS [A-Za-z0-9_.]*;[[:space:]]*$/d' "${file}" > "${temp_file}"
+            # SQLFluff does not parse these exact Databricks statements yet.
+            # The earlier diff gate still blocks newly added destructive clauses.
+            sed \
+              -e '/^[[:space:]]*WHEN NOT MATCHED BY SOURCE THEN DELETE;[[:space:]]*$/d' \
+              -e '/^[[:space:]]*DROP VIEW IF EXISTS [A-Za-z0-9_.]*;[[:space:]]*$/d' \
+              "${file}" > "${temp_file}"
             if ! sqlfluff parse --dialect databricks --templater jinja --ignore templating "${temp_file}" > "${RUNNER_TEMP}/sqlfluff-output.txt"; then
               cat "${RUNNER_TEMP}/sqlfluff-output.txt"
               exit 1

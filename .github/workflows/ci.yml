@@ -77,7 +77,10 @@ jobs:
             # SQLFluff does not parse this valid Databricks MERGE clause yet.
             # Remove only the exact supported clause from the temporary copy.
             sed '/^[[:space:]]*WHEN NOT MATCHED BY SOURCE THEN DELETE;[[:space:]]*$/d' "${file}" > "${temp_file}"
-            sqlfluff parse --dialect databricks --templater jinja --ignore templating "${temp_file}" >/dev/null
+            if ! sqlfluff parse --dialect databricks --templater jinja --ignore templating "${temp_file}" > "${RUNNER_TEMP}/sqlfluff-output.txt"; then
+              cat "${RUNNER_TEMP}/sqlfluff-output.txt"
+              exit 1
+            fi
 
             rm "${temp_file}"
           done

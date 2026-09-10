@@ -15,8 +15,8 @@ CREATE TABLE IF NOT EXISTS open_university.oulad_silver.vle_clean (
 ) USING DELTA;
 
 CREATE TABLE IF NOT EXISTS open_university.oulad_silver.vle_rejected (
-  code_module_raw STRING,
-  code_presentation_raw STRING,
+  code_module STRING,
+  code_presentation STRING,
   id_site_raw STRING,
   activity_type_raw STRING,
   week_from_raw STRING,
@@ -85,16 +85,16 @@ USING (
   FROM vle_typed_current_batch
   WHERE rejection_reason IS NOT NULL
 ) AS source
-ON  target.code_module_raw <=> source.code_module_raw
-AND target.code_presentation_raw <=> source.code_presentation_raw
+ON  target.code_module <=> source.code_module_raw
+AND target.code_presentation <=> source.code_presentation_raw
 AND target.id_site_raw <=> source.id_site_raw
 AND target.activity_type_raw <=> source.activity_type_raw
 AND target.week_from_raw <=> source.week_from_raw
 AND target.week_to_raw <=> source.week_to_raw
 AND target.rejection_reason = source.rejection_reason
 WHEN NOT MATCHED THEN INSERT (
-  code_module_raw,
-  code_presentation_raw,
+  code_module,
+  code_presentation,
   id_site_raw,
   activity_type_raw,
   week_from_raw,

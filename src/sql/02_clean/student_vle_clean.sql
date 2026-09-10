@@ -1,11 +1,3 @@
--- Silver student VLE interactions
--- Input: open_university.oulad_bronze.student_vle_raw
--- Result: open_university.oulad_silver.student_vle_clean
--- Grain / business key: One student-resource-day per presentation;
---   (code_module, code_presentation, id_student, id_site, date).
--- Bronze must preserve all successfully ingested rows. The MERGE updates keys from that cumulative
--- history and keeps target keys that are absent from the current input. Missing keys are not treated
--- as deletes because an incremental delivery may be partial.
 
 CREATE TABLE IF NOT EXISTS open_university.oulad_silver.student_vle_clean (
   code_module STRING,
@@ -19,8 +11,6 @@ CREATE TABLE IF NOT EXISTS open_university.oulad_silver.student_vle_clean (
   clean_load_date DATE
 ) USING DELTA;
 
--- Invalid required keys, failed casts and negative clicks are retained for investigation.
--- Replaying the same invalid record does not add another copy.
 CREATE TABLE IF NOT EXISTS open_university.oulad_silver.student_vle_rejected (
   code_module_raw STRING,
   code_presentation_raw STRING,
@@ -33,8 +23,7 @@ CREATE TABLE IF NOT EXISTS open_university.oulad_silver.student_vle_rejected (
   clean_load_date DATE
 ) USING DELTA;
 
--- Normalize and type the full current Bronze snapshot once for both the rejection output and the
--- valid daily aggregation. A temporary view lasts only for this Databricks session.
+-- Normalize the current batch and combine repeated daily keys.
 CREATE OR REPLACE TEMP VIEW student_vle_typed_current_batch AS
 WITH normalized AS (
   SELECT
@@ -116,6 +105,7 @@ SELECT
   END AS rejection_reason
 FROM casted;
 
+-- Keep rejected records for review.
 MERGE INTO open_university.oulad_silver.student_vle_rejected AS target
 USING (
   SELECT DISTINCT
@@ -161,7 +151,6 @@ VALUES (
   source.clean_load_date
 );
 
--- Stop instead of replacing an existing daily total with a smaller partial-batch value.
 SELECT assert_true(
   (
     SELECT COUNT(*)
@@ -190,6 +179,7 @@ SELECT assert_true(
   'Student VLE source is smaller than stored totals for an existing key. Check for a partial or incomplete batch.'
 );
 
+-- Upsert valid daily interactions without deleting prior history.
 MERGE INTO open_university.oulad_silver.student_vle_clean AS target
 USING (
   SELECT
@@ -217,7 +207,6 @@ AND target.id_student = source.id_student
 AND target.id_site = source.id_site
 AND target.date = source.date
 WHEN MATCHED THEN UPDATE SET
-  -- Replace the stored value with the full-source recomputation. Do not add it to the old total.
   target.sum_click = source.sum_click,
   target.source_row_count = source.source_row_count,
   target.clean_load_timestamp = source.clean_load_timestamp,
@@ -244,6 +233,7 @@ VALUES (
   source.clean_load_timestamp,
   source.clean_load_date
 );
--- Keep unmatched target rows. A missing key in a partial batch is not a delete.
 
 DROP VIEW IF EXISTS student_vle_typed_current_batch;
+-- Aggregates VLE clicks by student, presentation, resource and relative day.
+-- Existing history is retained because an incremental batch may be partial.

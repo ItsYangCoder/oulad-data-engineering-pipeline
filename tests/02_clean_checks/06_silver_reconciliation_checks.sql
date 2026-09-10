@@ -1,7 +1,4 @@
--- Final cross-table Silver reconciliation
--- Each result returns PASS only when the current-batch baseline and relationships agree.
 
--- Course coverage
 WITH course_counts AS (
   SELECT
     (SELECT COUNT(*) FROM open_university.oulad_bronze.courses_raw) AS bronze_rows,
@@ -16,7 +13,6 @@ SELECT *,
   END AS course_reconciliation_status
 FROM course_counts;
 
--- Assessment coverage and score preservation
 WITH metrics AS (
   SELECT
     (SELECT COUNT(*) FROM open_university.oulad_bronze.assessment_raw) AS assessment_bronze_rows,
@@ -39,7 +35,6 @@ SELECT *,
   END AS assessment_reconciliation_status
 FROM metrics;
 
--- Enrollment and registration coverage
 WITH enrollment_metrics AS (
   SELECT
     (SELECT COUNT(*) FROM open_university.oulad_bronze.student_info_raw) AS info_bronze_rows,
@@ -67,7 +62,6 @@ SELECT *,
   END AS enrollment_reconciliation_status
 FROM enrollment_metrics;
 
--- VLE reduction is expected because repeated source rows are aggregated to one daily business key.
 WITH vle_metrics AS (
   SELECT
     (SELECT COUNT(*) FROM open_university.oulad_silver.vle_clean) AS resource_rows,
@@ -89,8 +83,6 @@ SELECT *,
   END AS vle_reconciliation_status
 FROM vle_metrics;
 
--- Independent failure gate for student VLE coverage.
--- The expected side is aggregated directly from Bronze and does not reuse the Silver MERGE result.
 WITH bronze_daily AS (
   SELECT
     UPPER(TRIM(CAST(code_module AS STRING))) AS code_module,
@@ -137,7 +129,6 @@ SELECT assert_true(
   'Silver student VLE is missing a Bronze daily key or has changed row/click totals.'
 ) AS student_vle_independent_gate;
 
--- Independent failure gate for VLE resource key coverage.
 WITH bronze_resource_keys AS (
   SELECT DISTINCT
     UPPER(TRIM(CAST(code_module AS STRING))) AS code_module,
@@ -161,3 +152,5 @@ SELECT assert_true(
   (SELECT COUNT(*) FROM missing_resources) = 0,
   'Silver VLE resources are missing one or more valid Bronze keys.'
 ) AS vle_resource_independent_gate;
+-- Reconciles Bronze and Silver row counts, keys and measures.
+-- Expected result: every reconciliation status is PASS.

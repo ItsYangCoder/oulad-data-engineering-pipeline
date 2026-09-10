@@ -1,20 +1,4 @@
-# File: deploy.yml
-# Suggested branch: ci/add-databricks-deployment
-# Purpose: Publish a validated project revision to the agreed Databricks target.
-# Status: Implementation guide. Manual trigger only; the job is deliberately skipped.
-#
-# What the assigned member should put here:
-# 1. Define the development/final targets, deployment method and required configuration.
-# 2. Deploy only a known revision whose required checks passed; specify any job execution separately.
-# 3. Read authentication from configured secrets/environment settings; never hard-code tokens.
-# 4. Keep deployment order and table dependencies consistent with docs/pipeline_plan.md.
-# 5. Record the deployed revision and useful failure details; avoid duplicate jobs and unnecessary full rebuilds.
-# 6. Enable the real job and intended trigger only after the deployment process is tested.
-#
-# Done when: the deployed revision and its target are verifiable.
-# Replace the skipped job below with implementation; it does not validate or deploy anything.
-# Reference: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
-name: Deployment (implementation pending)
+name: Deploy OULAD Gold
 
 on:
   workflow_dispatch:
@@ -22,10 +6,83 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: oulad-production-deployment
+  cancel-in-progress: false
+
 jobs:
-  implementation-pending:
-    if: ${{ false }}
+  run-databricks-job:
+    name: Run validated Databricks job
     runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: production
+
+    env:
+      DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ vars.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      DATABRICKS_JOB_ID: ${{ vars.DATABRICKS_JOB_ID }}
+
     steps:
-      - name: Replace with real deployment steps before enabling
-        run: exit 1
+      - name: Validate deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${DATABRICKS_HOST:?Missing DATABRICKS_HOST}"
+          : "${DATABRICKS_CLIENT_ID:?Missing DATABRICKS_CLIENT_ID}"
+          : "${DATABRICKS_CLIENT_SECRET:?Missing DATABRICKS_CLIENT_SECRET}"
+          : "${DATABRICKS_JOB_ID:?Missing DATABRICKS_JOB_ID}"
+
+          if [[ "${GITHUB_REF_NAME}" != "main" ]]; then
+            echo "Deployment is allowed only from main; received ${GITHUB_REF_NAME}." >&2
+            exit 1
+          fi
+
+          if [[ -n "${DATABRICKS_TOKEN:-}" ]]; then
+            echo "DATABRICKS_TOKEN must not be configured. Use OAuth M2M." >&2
+            exit 1
+          fi
+
+      - name: Install Databricks CLI
+        uses: databricks/setup-cli@cfd9223558b9082c2aabb0c8fa47f1c3db2b7cbd
+        with:
+          version: 1.16.1
+
+      - name: Verify deployment target
+        shell: bash
+        run: databricks jobs get "${DATABRICKS_JOB_ID}" --output json
+
+      - name: Run job and wait for completion
+        id: databricks-run
+        shell: bash
+        run: |
+          set -euo pipefail
+          databricks jobs run-now "${DATABRICKS_JOB_ID}" \
+            --idempotency-token "${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            --timeout 30m \
+            --output json | tee run-response.json
+
+          run_id="$(jq -r '.run_id // empty' run-response.json)"
+          if [[ -z "${run_id}" ]]; then
+            echo "Databricks did not return a run ID." >&2
+            exit 1
+          fi
+
+          echo "run_id=${run_id}" >> "${GITHUB_OUTPUT}"
+
+      - name: Record deployment evidence
+        if: ${{ always() }}
+        shell: bash
+        env:
+          DATABRICKS_RUN_ID: ${{ steps.databricks-run.outputs.run_id }}
+        run: |
+          {
+            echo "## OULAD Gold deployment"
+            echo "- GitHub revision: \`${GITHUB_SHA}\`"
+            echo "- Databricks job ID: \`${DATABRICKS_JOB_ID}\`"
+            if [[ -n "${DATABRICKS_RUN_ID}" ]]; then
+              echo "- Databricks run ID: \`${DATABRICKS_RUN_ID}\`"
+            else
+              echo "- Databricks run ID: unavailable; inspect the failed step"
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"

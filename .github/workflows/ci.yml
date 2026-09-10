@@ -72,7 +72,7 @@ jobs:
           find src/sql tests -type f -name "*.sql" -print0 |
           while IFS= read -r -d "" file; do
             echo "Checking ${file}"
-            sqlfluff parse               --dialect databricks               --templater jinja               --ignore templating               "${file}" >/dev/null
+            sqlfluff parse               --dialect databricks               --templater jinja               --ignore templating               "${file}"
           done
 
       - name: Install dbt packages

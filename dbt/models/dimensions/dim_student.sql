@@ -8,7 +8,7 @@
 -- Note: only student identity is kept at this grain. Enrollment-dependent
 -- attributes (final_result, studied_credits, num_of_prev_attempts, and
 -- demographic profile) are intentionally excluded — they can vary per
--- enrollment and belong in fact/outcomes models, not this dimension.
+-- enrollment and belong in fact_student_enrollment, not this dimension.
 
 with source_students as (
 

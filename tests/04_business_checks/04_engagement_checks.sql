@@ -1,22 +1,8 @@
--- File: 04_engagement_checks.sql
--- Suggested branch: feature/vle-engagement
--- Purpose: Validate click totals, active-student counts and zero-activity coverage.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: 04_vle_engagement.sql output, Gold fact_vle_interactions and vw_student_outcomes.
--- Output: Read-only validation queries with failure counts/details and stated expected results; no data
---    changes.
---
--- What to put in this file:
--- 1. Recompute clicks and distinct active students under the exact report filters and active-student
---    definition.
--- 2. Validate enrollment active days using distinct dates across all resources; do not sum resource-day
---    counts.
--- 3. Check full-enrollment participation rates include zero-activity students from the outcomes view.
--- 4. Compare per-presentation totals to the VLE fact and confirm dimension joins preserve click totals.
--- 5. Check relative-time bins consistently handle negative days and day 0.
---
--- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
---    result alone is not an automated test.
---
--- Done when: Click totals and participation measures reconcile with the stated grain and denominator.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+-- VLE measures must reconcile and the reporting view must keep every enrollment.
+select
+    (select count(*) from open_university.oulad_silver.student_vle_clean) as silver_vle_rows,
+    (select count(*) from open_university.oulad_gold.fact_vle_interactions) as gold_vle_rows,
+    (select sum(sum_click) from open_university.oulad_silver.student_vle_clean) as silver_clicks,
+    (select sum(sum_click) from open_university.oulad_gold.fact_vle_interactions) as gold_clicks,
+    (select count(*) from open_university.oulad_silver.student_info_clean) as silver_enrollments,
+    (select count(*) from open_university.oulad_gold.vw_student_outcomes) as reporting_enrollments;

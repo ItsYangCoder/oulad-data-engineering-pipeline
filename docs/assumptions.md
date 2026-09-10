@@ -113,16 +113,14 @@ summed.
 The expected Clean output is 8,459,320 rows, assuming no additional
 invalid records are discovered.
 
-## 9. Assessment Fact Grain
+## 9. Student Enrollment Fact Grain
 
-One row in `fact_assessments` will represent:
+One row in `fact_student_enrollment` represents one student's enrollment in
+one module presentation. Its business key is `code_module + code_presentation
++ id_student`.
 
-One student's result for one assessment.
-
-The expected business key is:
-
-- `id_assessment`
-- `id_student`
+Assessment results are summarized to this grain. Missing scores remain excluded
+from `average_score`; zero assessment counts do not become zero scores.
 
 ## 10. VLE Interaction Fact Grain
 

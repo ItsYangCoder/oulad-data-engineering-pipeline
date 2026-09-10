@@ -10,8 +10,10 @@ The repository currently includes:
 - Bronze ingestion scripts for all seven OULAD source files
 - Bronze data-quality and source validation checks
 - Source assessment, assumptions, and pipeline planning documents
-- A completed `courses_clean` Silver transformation with validation
-- Folder guides for the remaining Silver, dbt Gold, analytics, testing, CI, and deployment work
+- Silver transformations and validation checks for all seven source tables
+- dbt definitions for five Gold dimensions, two facts, and an enrollment-level reporting view
+- Analytics and validation SQL aligned to the declared fact grains
+- Databricks execution and reconciliation pending for the redesigned Gold models
 
 Work that is still in progress is not presented as completed in this README.
 
@@ -111,12 +113,12 @@ The setup creates these schemas:
 - `open_university.oulad_gold`
 - `open_university.oulad_quality`
 
-### 5. Run the completed Silver transformation
+### 5. Run the Silver transformations
 
-After Bronze validation passes, run:
+After Bronze validation passes, run the seven files in:
 
 ```text
-src/sql/02_clean/courses_clean.sql
+src/sql/02_clean/
 ```
 
 Then run the applicable checks in:
@@ -125,14 +127,24 @@ Then run the applicable checks in:
 tests/02_clean_checks/
 ```
 
-The current expected output for `courses_clean` is 22 unique module-presentation rows.
+Run the checks in `tests/02_clean_checks/`, then build the Gold models from the
+`dbt/` directory:
+
+```bash
+dbt deps --profiles-dir .
+dbt build --profiles-dir . --target dev
+```
+
+The Gold layer produces five dimensions, `fact_student_enrollment`,
+`fact_vle_interactions`, and `vw_student_outcomes`.
 
 ## Important notes
 
 - Bronze preserves the original source records and ingestion metadata.
 - Missing source values must remain unknown unless a documented rule says otherwise.
-- The planned Gold model contains five dimensions, two facts, and one supporting reporting view.
-- Some files are still implementation guides while their assigned tasks are in progress.
+- The Gold model is a fact constellation with five shared dimensions and two facts:
+  `fact_student_enrollment` and `fact_vle_interactions`.
+- `vw_student_outcomes` combines enrollment measures with an enrollment-level VLE summary for reporting.
 - CI and deployment workflows are not considered complete until their real validation and deployment jobs are enabled and tested.
 
 ## Documentation
@@ -140,6 +152,7 @@ The current expected output for `courses_clean` is 22 unique module-presentation
 - [Pipeline plan](docs/pipeline_plan.md)
 - [Source assessment](docs/source_assessment.md)
 - [Project assumptions](docs/assumptions.md)
+- [Fact constellation diagram guide](docs/images/oulad_fact_constellation.md)
 
 ## Contribution workflow
 

@@ -415,19 +415,14 @@ facts, plus one supporting reporting view.
 
 | Model | Grain | Main source |
 | --- | --- | --- |
-| `fact_assessments` | One student result for one assessment | Student assessment and assessment context |
+| `fact_student_enrollment` | One student enrollment per module presentation | Student information, registration and summarized assessments |
 | `fact_vle_interactions` | One student-resource-day per module presentation | Clean student VLE interactions |
 
 ### Supporting reporting view
 
-`vw_student_outcomes` has one row per student-module-presentation enrollment.
-It provides the complete population for cohort, dropout and enrollment-level
-reporting, including students without recorded assessment or VLE activity.
-
-Do not add `fact_student_enrollment`, `dim_assessment` or
-`dim_vle_resource` to the required scope. Assessment and resource context
-belongs directly in the respective facts. The required relative-day dimension
-is named `dim_date`.
+`vw_student_outcomes` starts from `fact_student_enrollment` and adds a VLE
+summary at the same enrollment grain. It keeps students without recorded
+assessment or VLE activity. It is a reporting view, not a third fact.
 
 ---
 
@@ -446,7 +441,7 @@ implemented names consistent across models and tests.
 ### 10.2 `dim_module_presentation`
 
 - Grain/business key: one `code_module + code_presentation` pair.
-- Fields: `presentation_key`, `course_key`, both codes,
+- Fields: `presentation_key`, both codes,
   `module_presentation_length` and audit fields.
 - A presentation code alone is not unique across modules.
 - Expected current-batch rows: 22.
@@ -457,7 +452,7 @@ implemented names consistent across models and tests.
 - Fields: `student_key`, `id_student` and audit fields.
 - A student may have several enrollments. Keep presentation-dependent
   `final_result`, `studied_credits` and `num_of_prev_attempts` in
-  `vw_student_outcomes`, not as permanent student attributes.
+  `fact_student_enrollment`, not as permanent student attributes.
 - Resolve demographics using the matching enrollment when building facts.
 
 ### 10.4 `dim_demographics`
@@ -470,7 +465,7 @@ implemented names consistent across models and tests.
 
 ### 10.5 `dim_date`
 
-- Grain/business key: one non-null `relative_day`.
+- Grain/business key: one observed `relative_day`, plus one Unknown row.
 - Fields: `date_key`, `relative_day`, `is_before_presentation` and
   documented optional `relative_week`/`timing_group` fields, plus audit fields.
 - Cover assessment deadlines, submission days, interaction days and registration/
@@ -483,35 +478,26 @@ implemented names consistent across models and tests.
 
 ## 11. Fact and Reporting Specifications
 
-### 11.1 `fact_assessments`
+### 11.1 `fact_student_enrollment`
 
-Purpose: support assessment-performance analysis.
+Purpose: support enrollment, outcome, dropout and assessment-performance analysis.
 
-Business key: `id_assessment + id_student`.
+Business key: `code_module + code_presentation + id_student`.
 
-Start from `student_assessment_clean`; resolve assessment context by
-`id_assessment`, then enrollment context by all three enrollment-key columns.
+Start from the complete `student_info_clean` population. Join registration on
+the full enrollment key and summarize assessment results to the same grain
+before joining them. Include dimension keys, outcome fields, registration dates,
+assessment counts and average score. Missing scores stay excluded from the
+average, while students without assessments receive zero counts and a NULL
+average score.
 
-Planned fields include:
-
-- `id_assessment`, `id_student`, `code_module`, `code_presentation`
-- `student_key`, `course_key`, `presentation_key`, `demographics_key`
-- `date_key` for the submission day and the original `date_submitted`
-- `assessment_type`, assessment relative date and assessment weight
-- `score`, `is_banked` and audit fields
-
-Preserve all 173 missing TMA scores as NULL. Unknown Exam deadlines stay NULL.
-If implementing weighted scores or lateness, document the formula, missing-input
-behavior and treatment of banked results. Do not mix assessment weights into an
-undocumented overall grade.
-
-Expected current-batch rows: 173,912.
+Expected current-batch rows: 32,593.
 
 ### 11.2 `fact_vle_interactions`
 
 Purpose: support engagement and resource-activity analysis.
 
-Business key: `code_module + code_presentation + id_student + id_site + date`.
+Business key: `code_module + code_presentation + id_student + id_site + relative_day`.
 
 Start from the already aggregated `student_vle_clean`. Join resources on the
 complete module-presentation-resource key and demographics through the complete
@@ -537,19 +523,11 @@ Business key: `code_module + code_presentation + id_student`.
 
 Materialize this dbt model as a view.
 
-1. Start with the complete `student_info_clean` enrollment population.
-2. LEFT JOIN registration on the full enrollment key.
-3. Include dimension keys, `final_result`, `studied_credits`,
-   `num_of_prev_attempts`, `date_registration` and `date_unregistration`.
-4. Derive `is_withdrawn` from `final_result = 'Withdrawn'`.
-5. Aggregate each fact separately to enrollment grain before joining summaries.
-6. Include counts/average scores and clicks/active-day measures with explicit
-   definitions and denominators.
-7. Keep zero-activity enrollments. Use zero for absent activity counts/totals,
-   but keep unknown dates and unavailable average scores NULL.
-
-Never join the two detailed facts directly; multiple rows on both sides can
-multiply scores, clicks and enrollment counts.
+1. Start with `fact_student_enrollment`.
+2. Aggregate `fact_vle_interactions` to enrollment grain.
+3. LEFT JOIN the VLE summary using the full enrollment key.
+4. Use zero for absent clicks and activity counts.
+5. Keep unknown dates and unavailable average scores NULL.
 
 Expected current-batch rows: 32,593, including 10,156 Withdrawn enrollments.
 
@@ -568,7 +546,7 @@ Validate:
 
 | Model | Expected current-batch rows |
 | --- | ---: |
-| `fact_assessments` | 173,912 |
+| `fact_student_enrollment` | 32,593 |
 | `fact_vle_interactions` | 8,459,320 |
 | `vw_student_outcomes` (view) | 32,593 |
 
@@ -594,16 +572,16 @@ display alone does not automatically fail a pipeline.
 5. Configure dbt connection settings and declare all seven Silver sources.
 6. Build `dim_course`, `dim_module_presentation`, `dim_student`,
    `dim_demographics` and `dim_date` in dependency order.
-7. Build `fact_assessments` and `fact_vle_interactions`.
-8. Build `vw_student_outcomes` using separate fact summaries.
+7. Build `fact_student_enrollment` and `fact_vle_interactions`.
+8. Build `vw_student_outcomes` using the enrollment fact and aggregated VLE activity.
 9. Run dbt tests and Gold reconciliation checks.
 10. Implement analytics, business checks and Metabase dashboards.
 11. Create the ERD and complete the project README.
 12. Configure and validate orchestration and CI/CD when the relevant steps work.
 
-dbt `ref()` dependencies define the model build order. Unfinished model/test
-SQL currently keeps `enabled=false`; remove it as each model/test becomes
-ready. A successful parse of disabled guides is not a completed pipeline.
+dbt `ref()` dependencies define the model build order. A successful parse
+checks the model graph and syntax; Databricks execution and data reconciliation
+are still required before deployment.
 
 ---
 
@@ -622,10 +600,8 @@ The Mart layer should support the following questions:
 ### Assessment analysis
 
 * What are the average scores by module and presentation?
-* Which assessment types have the highest and lowest scores?
-* How many students receive a passing score?
-* How do late submissions affect student performance?
-* How do banked assessments affect results?
+* How many enrollments have scored or missing assessment results?
+* How does enrollment-level assessment performance relate to engagement?
 
 ### VLE engagement analysis
 

@@ -1,276 +1,51 @@
-# File: dimensions.yml
-# Suggested branch: feature/build-dimensions
-# Purpose: Document the five dimension models and attach reusable dbt data tests.
-#
-# The five Gold dimensions are:
-#   dim_student
-#   dim_course
-#   dim_module_presentation
-#   dim_date
-#   dim_demographics
-#
-# Notes:
-# - Dimension keys use deterministic MD5-based identifiers.
-# - Audit fields are generated during Gold model execution.
-# - Nullable demographic values, including imd_band, are valid.
-# - Negative relative days in dim_date are valid because OULAD dates are
-#   offsets from presentation start.
-# - Composite uniqueness tests are handled by singular dbt tests where
-#   multiple columns form the business key. See tests/ for:
-#     assert_unique_module_presentation.sql
-#     assert_unique_demographic_profile.sql
-# - course_key is the cross-dimension reference among the five dimensions
-#   and is tested using a relationships test.
-
 version: 2
 
 models:
-
-  # --------------------------------------------------------------------------
-  # DIM STUDENT
-  # --------------------------------------------------------------------------
   - name: dim_student
-    description: >
-      Student identity dimension containing one row per distinct non-null
-      student ID across the OULAD dataset. Enrollment-dependent attributes
-      such as final_result, studied_credits, num_of_prev_attempts, and the
-      demographic profile are intentionally excluded because they can vary
-      by enrollment.
-
+    description: One row per student.
     columns:
-
       - name: student_key
-        description: >
-          Stable deterministic surrogate key generated from id_student using MD5.
-        tests:
-          - not_null
-          - unique
-
+        data_tests: [not_null, unique]
       - name: id_student
-        description: >
-          OULAD student identifier and business key for the student dimension.
-        tests:
-          - not_null
-          - unique
+        data_tests: [not_null, unique]
 
-      - name: mart_load_timestamp
-        description: >
-          Timestamp when the Gold dimension row was generated.
-
-      - name: mart_load_date
-        description: >
-          Date when the Gold dimension row was generated.
-
-
-  # --------------------------------------------------------------------------
-  # DIM COURSE
-  # --------------------------------------------------------------------------
   - name: dim_course
-    description: >
-      Course/module dimension containing one row per distinct OULAD
-      code_module across all module presentations. Module names are not
-      supplied by the source and are not invented here.
-
+    description: One row per module.
     columns:
-
       - name: course_key
-        description: >
-          Stable deterministic surrogate key generated from code_module using MD5.
-        tests:
-          - not_null
-          - unique
-
+        data_tests: [not_null, unique]
       - name: code_module
-        description: >
-          OULAD module code and business key for the course dimension.
-        tests:
-          - not_null
-          - unique
+        data_tests: [not_null, unique]
 
-      - name: mart_load_timestamp
-        description: >
-          Timestamp when the Gold dimension row was generated.
-
-      - name: mart_load_date
-        description: >
-          Date when the Gold dimension row was generated.
-
-
-  # --------------------------------------------------------------------------
-  # DIM MODULE PRESENTATION
-  # --------------------------------------------------------------------------
   - name: dim_module_presentation
-    description: >
-      Module presentation dimension containing one row per unique combination
-      of code_module and code_presentation. The course_key is resolved from
-      dim_course without multiplying rows. The current OULAD batch is expected
-      to contain 22 module presentations. Composite uniqueness across both
-      codes is validated by assert_unique_module_presentation.sql.
-
+    description: One row per code_module and code_presentation combination.
     columns:
-
       - name: presentation_key
-        description: >
-          Stable deterministic surrogate key generated from code_module and
-          code_presentation using MD5. Both codes are required because
-          code_presentation alone is shared across modules.
-        tests:
-          - not_null
-          - unique
-
-      - name: course_key
-        description: >
-          Foreign key referencing the corresponding course in dim_course.
-        tests:
-          - not_null
-          - relationships:
-              to: ref('dim_course')
-              field: course_key
-
+        data_tests: [not_null, unique]
       - name: code_module
-        description: >
-          OULAD module code forming part of the module presentation business key.
-        tests:
-          - not_null
-
+        data_tests: [not_null]
       - name: code_presentation
-        description: >
-          OULAD presentation code forming part of the module presentation
-          business key. It is not unique on its own because the same
-          presentation code can occur across different modules.
-        tests:
-          - not_null
-
+        data_tests: [not_null]
       - name: module_presentation_length
-        description: >
-          Length of the module presentation in days as supplied by the Silver
-          courses_clean model. No exact calendar start date is inferred from
-          the presentation code.
+        data_tests: [not_null]
 
-      - name: mart_load_timestamp
-        description: >
-          Timestamp when the Gold dimension row was generated.
-
-      - name: mart_load_date
-        description: >
-          Date when the Gold dimension row was generated.
-
-
-  # --------------------------------------------------------------------------
-  # DIM DATE
-  # --------------------------------------------------------------------------
   - name: dim_date
-    description: >
-      Relative-date dimension containing one row per distinct non-null
-      relative day observed across assessment, student assessment, VLE
-      interaction, registration, and unregistration events. OULAD dates are
-      relative offsets from module presentation start rather than actual
-      calendar dates.
-
+    description: One row per relative day plus one Unknown row for missing dates.
     columns:
-
       - name: date_key
-        description: >
-          Stable deterministic surrogate key generated from relative_day using MD5.
-        tests:
-          - not_null
-          - unique
-
+        data_tests: [not_null, unique]
       - name: relative_day
-        description: >
-          Number of days relative to the module presentation start. Day 0
-          represents presentation start. Negative and positive values are valid.
-        tests:
-          - not_null
-          - unique
-
-      - name: relative_week
-        description: >
-          Seven-day relative bucket calculated as floor(relative_day / 7).
-          Days 0 to 6 are week 0, days 7 to 13 are week 1, days -1 to -7
-          are week -1, and so on. This represents relative-day bucketing
-          only and is not a calendar week.
-
-      - name: is_before_presentation
-        description: >
-          Boolean flag indicating whether relative_day occurs before the
-          module presentation start. TRUE for negative days and FALSE for
-          day 0 or later.
-
+        description: Relative day; NULL only for the Unknown row.
       - name: timing_group
-        description: >
-          Relative timing category. Pre-Presentation represents negative
-          relative days, while Presentation Period represents day 0 and later.
-          No finer-grained timing groups are defined because no business
-          rules for those boundaries have been supplied.
-        tests:
-          - accepted_values:
-              values:
-                - 'Pre-Presentation'
-                - 'Presentation Period'
-
-      - name: mart_load_timestamp
-        description: >
-          Timestamp when the Gold dimension row was generated.
-
-      - name: mart_load_date
-        description: >
-          Date when the Gold dimension row was generated.
-
-
-  # --------------------------------------------------------------------------
-  # DIM DEMOGRAPHICS
-  # --------------------------------------------------------------------------
-  - name: dim_demographics
-    description: >
-      Reusable demographic profile dimension containing one row per distinct
-      combination of gender, region, highest_education, imd_band, age_band,
-      and disability. final_result, studied_credits, and num_of_prev_attempts
-      are enrollment outcomes and are intentionally excluded. A fact model
-      must resolve a demographic profile from the specific
-      student-module-presentation enrollment rather than from id_student alone.
-      Composite uniqueness across all six demographic attributes is validated
-      by assert_unique_demographic_profile.sql.
-
-    columns:
-
-      - name: demographics_key
-        description: >
-          Stable deterministic surrogate key generated from the six demographic
-          attributes using a null-safe MD5 expression.
-        tests:
+        data_tests:
           - not_null
-          - unique
+          - accepted_values:
+              arguments: {values: ['Pre-Presentation', 'Presentation Period', 'Unknown']}
 
-      - name: gender
-        description: >
-          Student gender from the Silver enrollment data.
-
-      - name: region
-        description: >
-          Student region from the Silver enrollment data.
-
-      - name: highest_education
-        description: >
-          Student highest education level from the Silver enrollment data.
-
+  - name: dim_demographics
+    description: One row per distinct null-safe demographic profile.
+    columns:
+      - name: demographics_key
+        data_tests: [not_null, unique]
       - name: imd_band
-        description: >
-          Index of Multiple Deprivation band. NULL is a valid missing value
-          and is intentionally preserved in the Gold dimension.
-
-      - name: age_band
-        description: >
-          Student age band from the Silver enrollment data.
-
-      - name: disability
-        description: >
-          Disability indicator from the Silver enrollment data.
-
-      - name: mart_load_timestamp
-        description: >
-          Timestamp when the Gold dimension row was generated.
-
-      - name: mart_load_date
-        description: >
-          Date when the Gold dimension row was generated.
+        description: Nullable because the source contains unknown IMD bands.

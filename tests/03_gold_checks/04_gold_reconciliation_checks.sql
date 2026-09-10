@@ -1,25 +1,15 @@
--- File: 04_gold_reconciliation_checks.sql
--- Suggested branch: feature/add-gold-checks
--- For checks tied to one transformation, use that transformation's branch instead.
--- Purpose: Prove Gold models preserve Silver populations and measures.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: Both Gold facts, vw_student_outcomes and corresponding Silver tables.
--- Output: Read-only validation queries with failure counts/details and stated expected results; no data
---    changes.
---
--- What to put in this file:
--- 1. Compare assessment result keys, total/scored/missing counts and SUM(score), globally and per
---    presentation.
--- 2. Compare VLE daily-key coverage and SUM(sum_click) to Silver; also reconcile typed Bronze clicks
---    through Silver to Gold.
--- 3. Compare outcomes-view enrollment keys and final_result counts with student_info_clean; expect
---    32,593 enrollments.
--- 4. Include students with no activity and confirm separate fact aggregations do not multiply
---    enrollment rows.
--- 5. Report source_value, target_value and difference for every measure.
---
--- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
---    result alone is not an automated test.
---
--- Done when: No unexplained differences; fact counts are 173,912 and 8,459,320 for the current batch.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+-- Enrollment, outcome and assessment totals must reconcile to Silver.
+select
+    (select count(*) from open_university.oulad_silver.student_info_clean) as silver_enrollments,
+    (select count(*) from open_university.oulad_gold.fact_student_enrollment) as gold_enrollments,
+    (select count(*) from open_university.oulad_gold.vw_student_outcomes) as reporting_enrollments,
+    (select count(*) from open_university.oulad_gold.fact_student_enrollment where is_withdrawn) as withdrawn_enrollments,
+    (select sum(assessment_count) from open_university.oulad_gold.fact_student_enrollment) as summarized_assessments,
+    (select count(*) from open_university.oulad_silver.student_assessment_clean) as silver_assessments;
+
+-- VLE rows and clicks must reconcile to the already aggregated Silver table.
+select
+    (select count(*) from open_university.oulad_silver.student_vle_clean) as silver_rows,
+    (select count(*) from open_university.oulad_gold.fact_vle_interactions) as gold_rows,
+    (select sum(sum_click) from open_university.oulad_silver.student_vle_clean) as silver_clicks,
+    (select sum(sum_click) from open_university.oulad_gold.fact_vle_interactions) as gold_clicks;

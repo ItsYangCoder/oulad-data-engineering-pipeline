@@ -1,23 +1,14 @@
--- File: 02_dropout_checks.sql
--- Suggested branch: feature/dropout-analysis
--- Purpose: Validate the dropout rule, denominator and missing timing handling.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: 02_dropout_analysis.sql output and Gold vw_student_outcomes.
--- Output: Read-only validation queries with failure counts/details and stated expected results; no data
---    changes.
---
--- What to put in this file:
--- 1. Recompute withdrawn counts from final_result = 'Withdrawn'; check the same all-enrollment
---    denominator.
--- 2. For the current unfiltered batch, expect 10,156 Withdrawn among 32,593 enrollments.
--- 3. Confirm 93 Withdrawn records without unregistration dates still count as dropout and have Unknown
---    timing.
--- 4. Confirm the 9 Fail records with unregistration dates are not classified as dropout; guard division
---    by zero.
---
--- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
---    result alone is not an automated test.
---
--- Done when: Counts and rates reconcile, and known versus unknown withdrawal timing partitions the
---    withdrawn population.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+-- These current-batch values validate the documented withdrawal rule and missing timing.
+select
+    count(*) as enrollment_count,
+    sum(case when is_withdrawn then 1 else 0 end) as withdrawn_count,
+    sum(case when is_withdrawn and date_unregistration is null then 1 else 0 end)
+        as withdrawn_without_date,
+    sum(case when final_result = 'Fail' and date_unregistration is not null then 1 else 0 end)
+        as failed_with_unregistration_date
+from open_university.oulad_gold.fact_student_enrollment;
+
+-- This query should return zero rows.
+select *
+from open_university.oulad_gold.fact_student_enrollment
+where is_withdrawn <> (final_result = 'Withdrawn');

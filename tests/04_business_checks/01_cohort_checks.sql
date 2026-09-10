@@ -1,22 +1,11 @@
--- File: 01_cohort_checks.sql
--- Suggested branch: feature/cohort-analysis
--- Purpose: Validate cohort report populations and outcome percentages.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: 01_cohort_analysis.sql output, Gold vw_student_outcomes and Silver student_info_clean.
--- Output: Read-only validation queries with failure counts/details and stated expected results; no data
---    changes.
---
--- What to put in this file:
--- 1. Recompute totals using the same cohort filters and denominator as the analytics query.
--- 2. Confirm Distinction + Pass + Fail + Withdrawn counts equal all cohort enrollments.
--- 3. Confirm each enrollment appears once per intended grouping and Unknown demographics remain
---    included.
--- 4. Check rates stay in range and mutually exclusive outcome percentages sum to 100 within a stated
---    rounding tolerance.
---
--- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
---    result alone is not an automated test.
---
--- Done when: Cohort figures reconcile to the complete enrollment population without duplicate or
---    excluded enrollments.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+-- Returns a row when outcome counts do not equal the complete enrollment population.
+with totals as (
+    select
+        count(*) as enrollment_count,
+        sum(case when final_result in ('Distinction', 'Pass', 'Fail', 'Withdrawn') then 1 else 0 end)
+            as classified_count
+    from open_university.oulad_gold.vw_student_outcomes
+)
+select * from totals
+where enrollment_count <> classified_count
+   or enrollment_count <> 32593;

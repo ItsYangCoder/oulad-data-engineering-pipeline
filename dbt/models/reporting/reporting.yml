@@ -2,27 +2,131 @@ version: 2
 
 models:
   - name: vw_student_outcomes
-    description: "One row per student enrollment in a module presentation. Assessment and VLE activity are aggregated separately before joining."
+    description: >
+      Enrollment-level reporting view with one row per
+      (code_module, code_presentation, id_student).
+      Assessment and VLE activity are aggregated separately before joining.
+
     tests:
       - unique:
           column_name: "concat(code_module, '||', code_presentation, '||', cast(id_student as string))"
-      - not_null:
-          column_name: code_module
-      - not_null:
-          column_name: code_presentation
-      - not_null:
-          column_name: id_student
+
     columns:
-      - name: final_result
+      - name: code_module
+        description: "Module code forming part of the enrollment key."
         tests:
+          - not_null
+
+      - name: code_presentation
+        description: "Presentation code forming part of the enrollment key."
+        tests:
+          - not_null
+
+      - name: id_student
+        description: "Student identifier forming part of the enrollment key."
+        tests:
+          - not_null
+
+      - name: student_key
+        description: "Foreign key to dim_student."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_student')
+              field: student_key
+
+      - name: course_key
+        description: "Foreign key to dim_course."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_course')
+              field: course_key
+
+      - name: presentation_key
+        description: "Foreign key to dim_module_presentation."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_module_presentation')
+              field: presentation_key
+
+      - name: demographics_key
+        description: "Foreign key to dim_demographics."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_demographics')
+              field: demographics_key
+
+      - name: final_result
+        description: "Final enrollment outcome."
+        tests:
+          - not_null
           - accepted_values:
               values: ['Distinction', 'Pass', 'Fail', 'Withdrawn']
+
       - name: is_withdrawn
+        description: "TRUE when final_result is Withdrawn."
         tests:
           - not_null
+
+      - name: studied_credits
+        description: "Credits studied for the enrollment."
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+
+      - name: num_of_prev_attempts
+        description: "Number of previous attempts for the enrollment."
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+
+      - name: date_registration
+        description: "Registration date as an OULAD relative day; may be NULL."
+
+      - name: date_unregistration
+        description: "Unregistration date as an OULAD relative day; may be NULL."
+
       - name: result_count
+        description: "Number of assessment results for the enrollment; zero when absent."
         tests:
           - not_null
+
+      - name: scored_result_count
+        description: "Number of assessment results with a non-NULL score; zero when absent."
+        tests:
+          - not_null
+
+      - name: average_score
+        description: "Average non-NULL assessment score; NULL when unavailable."
+
       - name: total_clicks
+        description: "Total VLE clicks for the enrollment; zero when absent."
+        tests:
+          - not_null
+
+      - name: active_days
+        description: "Number of distinct VLE activity days; zero when absent."
+        tests:
+          - not_null
+
+      - name: resource_count
+        description: "Number of distinct VLE resources accessed; zero when absent."
+        tests:
+          - not_null
+
+      - name: mart_load_timestamp
+        description: "Timestamp when the reporting view was generated."
+        tests:
+          - not_null
+
+      - name: mart_load_date
+        description: "Date when the reporting view was generated."
         tests:
           - not_null

@@ -1,24 +1,144 @@
-{{ config(enabled=false) }}
+-- Kinukumpara nito ang Silver at Gold sa tatlong level:
+-- bawat daily key, bawat module presentation, at buong dataset.
+-- Kapag walang lumabas na row, walang nawala, nadagdag, o nabagong clicks.
 
--- File: vle_click_reconciliation.sql
--- Suggested branch: feature/build-vle-mart
--- Purpose: Prove the VLE fact preserves Silver click totals and daily keys.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: source('oulad_silver', 'student_vle_clean') and ref('fact_vle_interactions').
--- Output: A dbt singular test: one SELECT/CTE query returning failing rows only.
---
--- What to put in this file:
--- 1. Compare daily-key coverage in both directions and aggregate SUM(sum_click) globally and per module
---    presentation.
--- 2. Use a FULL OUTER comparison or equivalent so a missing entire source/target group cannot
---    disappear.
--- 3. Return only missing/extra keys, count differences or unequal totals, with explicit NULL handling.
--- 4. Bronze-to-Silver aggregation reconciliation belongs in
---    tests/02_clean_checks/06_silver_reconciliation_checks.sql.
--- 5. Remove enabled=false when the SQL and upstream model are ready, then run this test and verify it
---    catches a deliberate failing case in development.
---
---
--- Done when: Zero returned mismatches; the current fact has 8,459,320 daily rows and the same click sum
---    as Silver.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+with silver_daily as (
+
+    select
+        code_module,
+        code_presentation,
+        id_student,
+        id_site,
+        date,
+        count(*) as row_count,
+        sum(sum_click) as click_total
+    from {{ source('oulad_silver', 'student_vle_clean') }}
+    group by
+        code_module,
+        code_presentation,
+        id_student,
+        id_site,
+        date
+
+),
+
+gold_daily as (
+
+    select
+        code_module,
+        code_presentation,
+        id_student,
+        id_site,
+        date,
+        count(*) as row_count,
+        sum(sum_click) as click_total
+    from {{ ref('fact_vle_interactions') }}
+    group by
+        code_module,
+        code_presentation,
+        id_student,
+        id_site,
+        date
+
+),
+
+daily_failures as (
+
+    -- FULL OUTER JOIN para makita pati key na nasa isang side lang.
+    select
+        'DAILY_KEY' as check_level,
+        coalesce(s.code_module, g.code_module) as code_module,
+        coalesce(s.code_presentation, g.code_presentation) as code_presentation,
+        coalesce(s.row_count, 0) as silver_rows,
+        coalesce(g.row_count, 0) as gold_rows,
+        coalesce(s.click_total, 0) as silver_clicks,
+        coalesce(g.click_total, 0) as gold_clicks
+    from silver_daily s
+    full outer join gold_daily g
+        on s.code_module = g.code_module
+        and s.code_presentation = g.code_presentation
+        and s.id_student = g.id_student
+        and s.id_site = g.id_site
+        and s.date = g.date
+    where s.code_module is null
+        or g.code_module is null
+        or s.row_count <> g.row_count
+        or not (s.click_total <=> g.click_total)
+
+),
+
+silver_presentation as (
+
+    select
+        code_module,
+        code_presentation,
+        count(*) as row_count,
+        sum(sum_click) as click_total
+    from {{ source('oulad_silver', 'student_vle_clean') }}
+    group by code_module, code_presentation
+
+),
+
+gold_presentation as (
+
+    select
+        code_module,
+        code_presentation,
+        count(*) as row_count,
+        sum(sum_click) as click_total
+    from {{ ref('fact_vle_interactions') }}
+    group by code_module, code_presentation
+
+),
+
+presentation_failures as (
+
+    -- Tinitiyak nito na pareho ang rows at clicks sa bawat presentation.
+    select
+        'PRESENTATION' as check_level,
+        coalesce(s.code_module, g.code_module) as code_module,
+        coalesce(s.code_presentation, g.code_presentation) as code_presentation,
+        coalesce(s.row_count, 0) as silver_rows,
+        coalesce(g.row_count, 0) as gold_rows,
+        coalesce(s.click_total, 0) as silver_clicks,
+        coalesce(g.click_total, 0) as gold_clicks
+    from silver_presentation s
+    full outer join gold_presentation g
+        on s.code_module = g.code_module
+        and s.code_presentation = g.code_presentation
+    where s.code_module is null
+        or g.code_module is null
+        or s.row_count <> g.row_count
+        or not (s.click_total <=> g.click_total)
+
+),
+
+global_failures as (
+
+    -- Huling check ito para sa total rows at total clicks ng buong table.
+    select
+        'GLOBAL' as check_level,
+        cast(null as string) as code_module,
+        cast(null as string) as code_presentation,
+        s.row_count as silver_rows,
+        g.row_count as gold_rows,
+        s.click_total as silver_clicks,
+        g.click_total as gold_clicks
+    from (
+        select count(*) as row_count, sum(sum_click) as click_total
+        from {{ source('oulad_silver', 'student_vle_clean') }}
+    ) s
+    cross join (
+        select count(*) as row_count, sum(sum_click) as click_total
+        from {{ ref('fact_vle_interactions') }}
+    ) g
+    where s.row_count <> g.row_count
+        or not (s.click_total <=> g.click_total)
+
+)
+
+select * from daily_failures
+union all
+select * from presentation_failures
+union all
+select * from global_failures

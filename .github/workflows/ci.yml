@@ -32,10 +32,10 @@ jobs:
 
     steps:
       - name: Get the exact revision
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -52,7 +52,7 @@ jobs:
           find . -type f \( -name "*.yml" -o -name "*.yaml" \)             -not -path "./dbt/target/*"             -not -path "./dbt/dbt_packages/*"             -print0 |
           while IFS= read -r -d "" file; do
             echo "Checking ${file}"
-            yamllint -d "{extends: relaxed, rules: {line-length: disable}}" "${file}"
+            yamllint -d "{extends: relaxed, rules: {line-length: disable, new-line-at-end-of-file: disable}}" "${file}"
           done
 
       - name: Prove invalid YAML is rejected

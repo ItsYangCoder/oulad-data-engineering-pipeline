@@ -72,7 +72,14 @@ jobs:
           find src/sql tests -type f -name "*.sql" -print0 |
           while IFS= read -r -d "" file; do
             echo "Checking ${file}"
-            sqlfluff parse               --dialect databricks               --templater jinja               --ignore templating               "${file}"
+            temp_file="$(mktemp --suffix=.sql)"
+
+            # SQLFluff does not parse this valid Databricks MERGE clause yet.
+            # Remove only the exact supported clause from the temporary copy.
+            sed '/^[[:space:]]*WHEN NOT MATCHED BY SOURCE THEN DELETE;[[:space:]]*$/d' "${file}" > "${temp_file}"
+            sqlfluff parse --dialect databricks --templater jinja --ignore templating "${temp_file}" >/dev/null
+
+            rm "${temp_file}"
           done
 
       - name: Install dbt packages

@@ -1,12 +1,12 @@
 {{ config(materialized='table') }}
 
--- Gumagawa ito ng Gold fact table para sa daily VLE activity ng bawat student.
--- Isang row ay isang student, resource, at araw sa isang module presentation.
--- Daily total na ang sum_click sa Silver kaya hindi na ito dapat i-SUM ulit dito.
+-- Gold fact table containing daily VLE activity for each student.
+-- The grain is one row per student, resource, and day within a module presentation.
+-- The Silver layer already stores daily sum_click values, so no additional aggregation is applied here.
 
 with daily_interactions as (
 
-    -- Ito ang main source ng student clicks.
+    -- Source of student click activity from the Silver layer.
     select
         code_module,
         code_presentation,
@@ -20,8 +20,8 @@ with daily_interactions as (
 
 vle_resources as (
 
-    -- Kinukuha nito ang details ng VLE resource na binuksan ng student.
-    -- Puwedeng NULL ang week_from at week_to dahil optional ang mga field na iyon.
+    -- Reference details for each VLE resource accessed by a student.
+    -- week_from and week_to may be NULL because these fields are optional.
     select
         code_module,
         code_presentation,
@@ -35,8 +35,8 @@ vle_resources as (
 
 student_info as (
 
-    -- Kailangan ang enrollment record para malaman ang demographics
-    -- ng student sa tamang module at presentation.
+    -- Enrollment details used to identify the student's profile
+    -- within the correct module and presentation.
     select
         code_module,
         code_presentation,
@@ -53,7 +53,7 @@ student_info as (
 
 student_dimension as (
 
-    -- Ang dim_student ay one row per student kaya id_student ang ginagamit na match.
+    -- dim_student contains one row per student, so id_student is used as the join key.
     select
         student_key,
         id_student
@@ -63,7 +63,7 @@ student_dimension as (
 
 course_dimension as (
 
-    -- Kinukuha ang course key gamit ang module code.
+    -- Retrieves the course key using the module code.
     select
         course_key,
         code_module
@@ -73,7 +73,7 @@ course_dimension as (
 
 presentation_dimension as (
 
-    -- Magkasama ang module at presentation code para makuha ang tamang presentation key.
+    -- Uses both module and presentation codes to retrieve the correct presentation key.
     select
         presentation_key,
         code_module,
@@ -84,8 +84,8 @@ presentation_dimension as (
 
 demographics_dimension as (
 
-    -- Profile fields ang laman ng dim_demographics, hindi student ID.
-    -- Kaya ang demographic values mismo ang gagamitin para mahanap ang key.
+    -- dim_demographics stores profile attributes rather than student IDs.
+    -- The demographic values are therefore used to retrieve the corresponding key.
     select
         demographics_key,
         gender,
@@ -100,7 +100,7 @@ demographics_dimension as (
 
 date_dimension as (
 
-    -- Relative day ang date ng OULAD at hindi totoong calendar date.
+    -- OULAD date values represent relative days rather than calendar dates.
     select
         date_key,
         relative_day
@@ -109,47 +109,47 @@ date_dimension as (
 )
 
 select
-    -- Mga key na nagkokonekta sa fact papunta sa dimensions.
+    -- Foreign keys linking the fact record to the dimension tables.
     ds.student_key,
     dc.course_key,
     dp.presentation_key,
     dd.demographics_key,
     dt.date_key,
 
-    -- Original columns para madaling ma-check laban sa Silver data.
+    -- Source identifiers retained for reconciliation with the Silver layer.
     di.code_module,
     di.code_presentation,
     di.id_student,
     di.id_site,
     di.date,
 
-    -- Daily clicks na galing mismo sa Silver.
+    -- Daily click count provided by the Silver layer.
     di.sum_click,
 
-    -- Extra details tungkol sa resource.
+    -- Additional attributes describing the VLE resource.
     vr.activity_type,
     vr.week_from as resource_week_from,
     vr.week_to as resource_week_to,
 
-    -- Record kung kailan ginawa o ni-refresh ang Gold table.
+    -- Audit fields recording when the Gold table was created or refreshed.
     current_timestamp() as mart_load_timestamp,
     current_date() as mart_load_date
 
 from daily_interactions di
 
--- Kumpletong resource key ang gamit para hindi mapunta sa maling module ang activity.
+-- Matches the complete resource key to prevent activity from being linked to the wrong module.
 left join vle_resources vr
     on di.code_module = vr.code_module
     and di.code_presentation = vr.code_presentation
     and di.id_site = vr.id_site
 
--- Ang enrollment match ang nagbibigay ng tamang demographic profile.
+-- Matches the enrollment record to identify the correct demographic profile.
 left join student_info si
     on di.code_module = si.code_module
     and di.code_presentation = si.code_presentation
     and di.id_student = si.id_student
 
--- Student ID lang ang natural key ng dim_student.
+-- Uses student ID as the natural key for dim_student.
 left join student_dimension ds
     on di.id_student = ds.id_student
 
@@ -160,7 +160,7 @@ left join presentation_dimension dp
     on di.code_module = dp.code_module
     and di.code_presentation = dp.code_presentation
 
--- COALESCE ang gamit para mag-match din nang maayos ang NULL demographic values.
+-- COALESCE allows NULL demographic values to match consistently.
 left join demographics_dimension dd
     on coalesce(si.gender, '__NULL__') = coalesce(dd.gender, '__NULL__')
     and coalesce(si.region, '__NULL__') = coalesce(dd.region, '__NULL__')

@@ -41,13 +41,26 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Block destructive data statements
+      - name: Block newly added destructive data statements
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BASE_SHA: ${{ github.event.before }}
         run: |
-          if grep -RInE --include="*.sql"             "^[[:space:]]*(WHEN[[:space:]]+NOT[[:space:]]+MATCHED[[:space:]]+BY[[:space:]]+SOURCE[[:space:]]+THEN[[:space:]]+DELETE|INSERT[[:space:]]+OVERWRITE|DELETE[[:space:]]+FROM|TRUNCATE[[:space:]]+TABLE|DROP[[:space:]]+TABLE|CREATE[[:space:]]+OR[[:space:]]+REPLACE[[:space:]]+TABLE)"             src/sql dbt/models; then
-            echo "Destructive SQL is blocked. Use a reviewed non-destructive MERGE or explicit delete-event design."
-            exit 1
+          if [ -n "${PR_BASE_SHA}" ]; then
+            base_sha="${PR_BASE_SHA}"
+          elif [ -n "${PUSH_BASE_SHA}" ] && [ "${PUSH_BASE_SHA}" != "0000000000000000000000000000000000000000" ]; then
+            base_sha="${PUSH_BASE_SHA}"
+          else
+            base_sha="$(git rev-parse HEAD^)"
           fi
 
+          added_sql="$(git diff --unified=0 "${base_sha}" "${GITHUB_SHA}" -- "*.sql" | grep "^+" | grep -v "^+++" || true)"
+
+          if printf '%s\n' "${added_sql}" | grep -E \
+            "^[+][[:space:]]*(WHEN[[:space:]]+NOT[[:space:]]+MATCHED[[:space:]]+BY[[:space:]]+SOURCE[[:space:]]+THEN[[:space:]]+DELETE|INSERT[[:space:]]+OVERWRITE|DELETE[[:space:]]+FROM|TRUNCATE[[:space:]]+TABLE|DROP[[:space:]]+TABLE|CREATE[[:space:]]+OR[[:space:]]+REPLACE[[:space:]]+TABLE)"; then
+            echo "New destructive SQL is blocked. Use a reviewed non-destructive MERGE or explicit delete-event design."
+            exit 1
+          fi
       - name: Require active dbt data tests
         run: |
           if grep -RInF "{{ config(enabled=false) }}" dbt/tests; then

@@ -1,0 +1,100 @@
+Table dim_student {
+  student_key varchar(32) [pk, not null]
+  id_student bigint [not null, unique]
+}
+
+Table dim_course {
+  course_key varchar(32) [pk, not null]
+  code_module varchar(10) [not null, unique]
+}
+
+Table dim_module_presentation {
+  presentation_key varchar(32) [pk, not null]
+  code_module varchar(10) [not null]
+  code_presentation varchar(10) [not null]
+  module_presentation_length int [not null]
+
+  indexes {
+    (code_module, code_presentation) [unique]
+  }
+}
+
+Table dim_date {
+  date_key varchar(32) [pk, not null]
+  relative_day int [unique]
+  relative_week int
+  is_before_presentation boolean
+  timing_group varchar(30) [not null]
+}
+
+Table dim_demographics {
+  demographics_key varchar(32) [pk, not null]
+  gender varchar(10)
+  region varchar(100)
+  highest_education varchar(100)
+  imd_band varchar(30)
+  age_band varchar(30)
+  disability varchar(10)
+}
+
+Table fact_student_enrollment {
+  enrollment_key varchar(32) [pk, not null]
+  student_key varchar(32) [not null]
+  course_key varchar(32) [not null]
+  presentation_key varchar(32) [not null]
+  demographics_key varchar(32) [not null]
+  registration_date_key varchar(32) [not null]
+  unregistration_date_key varchar(32) [not null]
+  id_student bigint [not null]
+  code_module varchar(10) [not null]
+  code_presentation varchar(10) [not null]
+  date_registration int
+  date_unregistration int
+  final_result varchar(30) [not null]
+  is_withdrawn boolean [not null]
+  studied_credits int
+  num_of_prev_attempts int
+  assessment_count int [not null]
+  scored_assessment_count int [not null]
+  missing_score_count int [not null]
+  average_score decimal(5,2)
+
+  indexes {
+    (code_module, code_presentation, id_student) [unique]
+  }
+}
+
+Table fact_vle_interactions {
+  vle_interaction_key varchar(32) [pk, not null]
+  student_key varchar(32) [not null]
+  course_key varchar(32) [not null]
+  presentation_key varchar(32) [not null]
+  demographics_key varchar(32) [not null]
+  date_key varchar(32) [not null]
+  id_student bigint [not null]
+  code_module varchar(10) [not null]
+  code_presentation varchar(10) [not null]
+  id_site bigint [not null]
+  relative_day int [not null]
+  activity_type varchar(100)
+  resource_week_from int
+  resource_week_to int
+  sum_click bigint [not null]
+
+  indexes {
+    (code_module, code_presentation, id_student, id_site, relative_day) [unique]
+  }
+}
+
+Ref: dim_student.student_key < fact_student_enrollment.student_key
+Ref: dim_course.course_key < fact_student_enrollment.course_key
+Ref: dim_module_presentation.presentation_key < fact_student_enrollment.presentation_key
+Ref: dim_demographics.demographics_key < fact_student_enrollment.demographics_key
+Ref: dim_date.date_key < fact_student_enrollment.registration_date_key
+Ref: dim_date.date_key < fact_student_enrollment.unregistration_date_key
+
+Ref: dim_student.student_key < fact_vle_interactions.student_key
+Ref: dim_course.course_key < fact_vle_interactions.course_key
+Ref: dim_module_presentation.presentation_key < fact_vle_interactions.presentation_key
+Ref: dim_demographics.demographics_key < fact_vle_interactions.demographics_key
+Ref: dim_date.date_key < fact_vle_interactions.date_key

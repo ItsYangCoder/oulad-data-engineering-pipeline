@@ -1,22 +1,10 @@
--- File: 02_fact_grain_checks.sql
--- Suggested branch: feature/add-gold-checks
--- For checks tied to one transformation, use that transformation's branch instead.
--- Purpose: Detect duplicated or missing fact business keys after dimension joins.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: Gold fact_assessments and fact_vle_interactions.
--- Output: Read-only validation queries with failure counts/details and stated expected results; no data
---    changes.
---
--- What to put in this file:
--- 1. Check assessment uniqueness on id_assessment + id_student.
--- 2. Check VLE uniqueness on code_module + code_presentation + id_student + id_site + date.
--- 3. Return missing-key rows and GROUP BY full-key groups with COUNT(*) > 1.
--- 4. Report expected current-batch fact counts 173,912 and 8,459,320 separately; count equality alone
---    does not prove uniqueness.
---
--- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
---    result alone is not an automated test.
---
--- Done when: No key violations and correct fact populations; mirror the same rules as the dbt grain
---    tests.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+-- Both queries should return zero rows.
+select code_module, code_presentation, id_student, count(*) as row_count
+from open_university.oulad_gold.fact_student_enrollment
+group by code_module, code_presentation, id_student
+having count(*) <> 1;
+
+select code_module, code_presentation, id_student, id_site, relative_day, count(*) as row_count
+from open_university.oulad_gold.fact_vle_interactions
+group by code_module, code_presentation, id_student, id_site, relative_day
+having count(*) <> 1;

@@ -1,22 +1,31 @@
--- File: 01_dimension_key_checks.sql
--- Suggested branch: feature/add-gold-checks
--- For checks tied to one transformation, use that transformation's branch instead.
--- Purpose: Validate each of the five required dimensions at its own grain.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: Gold dim_student, dim_course, dim_module_presentation, dim_date and dim_demographics.
--- Output: Read-only validation queries with failure counts/details and stated expected results; no data
---    changes.
---
--- What to put in this file:
--- 1. Check each surrogate/natural key for uniqueness and NULLs.
--- 2. Check student by id_student, course by code_module, presentation by both codes, date by
---    relative_day, demographics by the six profile attributes.
--- 3. Check dimension coverage against Silver; expect 22 module presentations for the current batch.
--- 4. Verify NULL demographic attributes match consistently, and negative relative days remain valid.
---
--- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
---    result alone is not an automated test.
---
--- Done when: All keys are unique/non-null and required Silver business values have exactly one
---    dimension mapping.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+-- Each query should return zero rows.
+select student_key, count(*) as row_count
+from open_university.oulad_gold.dim_student
+group by student_key
+having student_key is null or count(*) <> 1;
+
+select course_key, count(*) as row_count
+from open_university.oulad_gold.dim_course
+group by course_key
+having course_key is null or count(*) <> 1;
+
+select code_module, code_presentation, count(*) as row_count
+from open_university.oulad_gold.dim_module_presentation
+group by code_module, code_presentation
+having code_module is null or code_presentation is null or count(*) <> 1;
+
+select date_key, count(*) as row_count
+from open_university.oulad_gold.dim_date
+group by date_key
+having date_key is null or count(*) <> 1;
+
+-- The date dimension must contain exactly one Unknown record.
+select count(*) as unknown_row_count
+from open_university.oulad_gold.dim_date
+where date_key = 'UNKNOWN' and relative_day is null
+having count(*) <> 1;
+
+select demographics_key, count(*) as row_count
+from open_university.oulad_gold.dim_demographics
+group by demographics_key
+having demographics_key is null or count(*) <> 1;

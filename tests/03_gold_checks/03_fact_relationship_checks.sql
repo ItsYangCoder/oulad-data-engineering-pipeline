@@ -1,23 +1,28 @@
--- File: 03_fact_relationship_checks.sql
--- Suggested branch: feature/add-gold-checks
--- For checks tied to one transformation, use that transformation's branch instead.
--- Purpose: Find unresolved fact dimension references and mismatched presentation context.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: Both Gold facts and the five required dimensions.
--- Output: Read-only validation queries with failure counts/details and stated expected results; no data
---    changes.
---
--- What to put in this file:
--- 1. LEFT JOIN each actual foreign key to its dimension and report unmatched required keys.
--- 2. Check that course/module, presentation and enrollment-specific demographics belong to the same
---    source context.
--- 3. Validate date_key against the event's relative day; apply each date role separately if more than
---    one is implemented.
--- 4. Treat a documented NULL optional deadline as unknown, not an orphan; known days must resolve.
--- 5. Check row counts before and after joins so a duplicate parent cannot pass unnoticed.
---
--- Use this file for manual Databricks checks. A runner must explicitly fail on violations; a displayed
---    result alone is not an automated test.
---
--- Done when: Zero unexplained required NULL/orphan foreign keys, context mismatches or multiplied rows.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+-- Each result should report zero unresolved foreign keys.
+select
+    sum(case when s.student_key is null then 1 else 0 end) as missing_student,
+    sum(case when c.course_key is null then 1 else 0 end) as missing_course,
+    sum(case when p.presentation_key is null then 1 else 0 end) as missing_presentation,
+    sum(case when d.demographics_key is null then 1 else 0 end) as missing_demographics,
+    sum(case when rd.date_key is null then 1 else 0 end) as missing_registration_date,
+    sum(case when ud.date_key is null then 1 else 0 end) as missing_unregistration_date
+from open_university.oulad_gold.fact_student_enrollment f
+left join open_university.oulad_gold.dim_student s on f.student_key = s.student_key
+left join open_university.oulad_gold.dim_course c on f.course_key = c.course_key
+left join open_university.oulad_gold.dim_module_presentation p on f.presentation_key = p.presentation_key
+left join open_university.oulad_gold.dim_demographics d on f.demographics_key = d.demographics_key
+left join open_university.oulad_gold.dim_date rd on f.registration_date_key = rd.date_key
+left join open_university.oulad_gold.dim_date ud on f.unregistration_date_key = ud.date_key;
+
+select
+    sum(case when s.student_key is null then 1 else 0 end) as missing_student,
+    sum(case when c.course_key is null then 1 else 0 end) as missing_course,
+    sum(case when p.presentation_key is null then 1 else 0 end) as missing_presentation,
+    sum(case when d.demographics_key is null then 1 else 0 end) as missing_demographics,
+    sum(case when dt.date_key is null then 1 else 0 end) as missing_date
+from open_university.oulad_gold.fact_vle_interactions f
+left join open_university.oulad_gold.dim_student s on f.student_key = s.student_key
+left join open_university.oulad_gold.dim_course c on f.course_key = c.course_key
+left join open_university.oulad_gold.dim_module_presentation p on f.presentation_key = p.presentation_key
+left join open_university.oulad_gold.dim_demographics d on f.demographics_key = d.demographics_key
+left join open_university.oulad_gold.dim_date dt on f.date_key = dt.date_key;

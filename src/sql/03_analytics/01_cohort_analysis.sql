@@ -1,21 +1,14 @@
--- File: 01_cohort_analysis.sql
--- Suggested branch: feature/cohort-analysis
--- Purpose: Compare enrollment outcomes across module-presentation cohorts.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: open_university.oulad_gold.vw_student_outcomes and relevant dimensions.
--- Output: Read-only result set for Metabase; no CREATE, MERGE, INSERT or table rebuild.
--- Grain / business key: One output row per selected cohort, with optional demographic grouping.
---
--- What to put in this file:
--- 1. Define a cohort using code_module and code_presentation; state any filters before calculating
---    totals.
--- 2. Count enrollment rows and each final_result category: Distinction, Pass, Fail and Withdrawn.
--- 3. Return enrollment_count, outcome counts and clearly named rates with an explicit denominator.
--- 4. Keep Unknown demographic groups and zero-activity enrollments; do not count detailed fact rows as
---    students.
--- 5. Use simple CTEs, readable aliases and a deterministic ORDER BY for a Metabase table or chart.
---
---
--- Done when: Outcome counts add up to the enrollment population; rates use the stated denominator;
---    tests/04_business_checks/01_cohort_checks.sql passes.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+-- Compares complete enrollment outcomes by module presentation.
+select
+    code_module,
+    code_presentation,
+    count(*) as enrollment_count,
+    sum(case when final_result = 'Distinction' then 1 else 0 end) as distinction_count,
+    sum(case when final_result = 'Pass' then 1 else 0 end) as pass_count,
+    sum(case when final_result = 'Fail' then 1 else 0 end) as fail_count,
+    sum(case when final_result = 'Withdrawn' then 1 else 0 end) as withdrawn_count,
+    round(100.0 * sum(case when final_result = 'Withdrawn' then 1 else 0 end) / count(*), 2)
+        as withdrawal_rate_pct
+from open_university.oulad_gold.vw_student_outcomes
+group by code_module, code_presentation
+order by code_module, code_presentation;

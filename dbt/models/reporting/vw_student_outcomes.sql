@@ -1,37 +1,46 @@
-{{ config(enabled=false) }}
+{{ config(materialized='view') }}
 
--- File: vw_student_outcomes.sql
--- Suggested branch: feature/build-student-outcomes
--- Purpose: Give cohort and dropout reports one row per enrollment, including students without recorded
---    activity.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: Silver student_info_clean and student_registration_clean; required dimensions and both facts
---    via ref().
--- Output: open_university.oulad_gold.vw_student_outcomes (a dbt view)
--- Grain / business key: One row per (code_module, code_presentation, id_student).
---
--- What to put in this file:
--- 1. Write a dbt SELECT with named CTEs, source() for Silver inputs and ref() for other Gold models;
---    dbt manages the target relation.
--- 2. Set this model's materialization to view. Start from the complete student_info_clean enrollment
---    population.
--- 3. LEFT JOIN registration on the full enrollment key and resolve the appropriate student, course,
---    presentation and demographic keys.
--- 4. Include final_result, studied_credits, num_of_prev_attempts, date_registration and
---    date_unregistration; derive is_withdrawn from final_result = 'Withdrawn'.
--- 5. Aggregate fact_assessments to enrollment grain first: result_count, scored_result_count and
---    average_score excluding NULL scores.
--- 6. Aggregate fact_vle_interactions separately to enrollment grain first: total_clicks, active_days
---    and resource_count, with clearly documented definitions.
--- 7. LEFT JOIN those two summaries to enrollments. Never join the two detailed facts directly.
--- 8. Use zero for absent activity counts/totals; keep average_score and unknown dates NULL when no
---    value is available.
--- 9. Remove enabled=false only when this model and its dependencies are implemented; add
---    documentation/tests in the adjacent YAML.
---
--- Validate enrollment uniqueness, outcome counts and zero-activity coverage in reporting.yml and
---    tests/04_business_checks/.
---
--- Done when: 32,593 current-batch enrollment rows, including all outcomes; 10,156 Withdrawn; measures
---    are not multiplied by joins.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+-- Grain: one student enrollment in one module presentation.
+-- VLE activity is aggregated before the join so enrollment measures are not multiplied.
+
+with vle_summary as (
+    select
+        code_module,
+        code_presentation,
+        id_student,
+        sum(sum_click) as total_clicks,
+        count(distinct relative_day) as active_days,
+        count(distinct id_site) as resource_count
+    from {{ ref('fact_vle_interactions') }}
+    group by code_module, code_presentation, id_student
+)
+
+select
+    e.enrollment_key,
+    e.student_key,
+    e.course_key,
+    e.presentation_key,
+    e.demographics_key,
+    e.registration_date_key,
+    e.unregistration_date_key,
+    e.id_student,
+    e.code_module,
+    e.code_presentation,
+    e.date_registration,
+    e.date_unregistration,
+    e.final_result,
+    e.is_withdrawn,
+    e.studied_credits,
+    e.num_of_prev_attempts,
+    e.assessment_count,
+    e.scored_assessment_count,
+    e.missing_score_count,
+    e.average_score,
+    coalesce(v.total_clicks, 0) as total_clicks,
+    coalesce(v.active_days, 0) as active_days,
+    coalesce(v.resource_count, 0) as resource_count
+from {{ ref('fact_student_enrollment') }} e
+left join vle_summary v
+    on e.code_module = v.code_module
+    and e.code_presentation = v.code_presentation
+    and e.id_student = v.id_student

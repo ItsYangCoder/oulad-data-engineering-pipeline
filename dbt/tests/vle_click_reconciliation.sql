@@ -1,6 +1,5 @@
--- Kinukumpara nito ang Silver at Gold sa tatlong level:
--- bawat daily key, bawat module presentation, at buong dataset.
--- Kapag walang lumabas na row, walang nawala, nadagdag, o nabagong clicks.
+-- Compares Silver and Gold at the daily key, presentation and dataset levels.
+-- The test returns rows when a key, row count or click total differs.
 
 with silver_daily as (
 
@@ -29,7 +28,7 @@ gold_daily as (
         code_presentation,
         id_student,
         id_site,
-        date,
+        relative_day as date,
         count(*) as row_count,
         sum(sum_click) as click_total
     from {{ ref('fact_vle_interactions') }}
@@ -38,13 +37,13 @@ gold_daily as (
         code_presentation,
         id_student,
         id_site,
-        date
+        relative_day
 
 ),
 
 daily_failures as (
 
-    -- FULL OUTER JOIN para makita pati key na nasa isang side lang.
+    -- The full join finds keys that exist on only one side.
     select
         'DAILY_KEY' as check_level,
         coalesce(s.code_module, g.code_module) as code_module,
@@ -93,7 +92,7 @@ gold_presentation as (
 
 presentation_failures as (
 
-    -- Tinitiyak nito na pareho ang rows at clicks sa bawat presentation.
+    -- Row and click totals must match within every presentation.
     select
         'PRESENTATION' as check_level,
         coalesce(s.code_module, g.code_module) as code_module,
@@ -115,7 +114,7 @@ presentation_failures as (
 
 global_failures as (
 
-    -- Huling check ito para sa total rows at total clicks ng buong table.
+    -- Dataset totals provide a final reconciliation check.
     select
         'GLOBAL' as check_level,
         cast(null as string) as code_module,

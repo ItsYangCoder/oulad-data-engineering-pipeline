@@ -1,93 +1,119 @@
 version: 2
 
 models:
-  - name: fact_assessments
-    description: "Student assessment results at one row per (id_assessment, id_student)."
+  - name: fact_student_enrollment
+    description: One row per student enrollment in one module presentation.
     columns:
-      - name: id_assessment
-        description: "Assessment business-key component from assessment_clean."
-        tests:
-          - not_null
-      - name: id_student
-        description: "Student business-key component from student_assessment_clean."
-        tests:
-          - not_null
-      - name: code_module
-        description: "Module code from the assessment definition."
-        tests:
-          - not_null
-      - name: code_presentation
-        description: "Presentation code from the assessment definition."
-        tests:
-          - not_null
+      - name: enrollment_key
+        data_tests: [not_null, unique]
       - name: student_key
-        description: "Foreign key to dim_student."
-        tests:
+        data_tests:
           - not_null
           - relationships:
-              to: ref('dim_student')
-              field: student_key
+              arguments: {to: "ref('dim_student')", field: student_key}
       - name: course_key
-        description: "Foreign key to dim_course."
-        tests:
+        data_tests:
           - not_null
           - relationships:
-              to: ref('dim_course')
-              field: course_key
+              arguments: {to: "ref('dim_course')", field: course_key}
       - name: presentation_key
-        description: "Foreign key to dim_module_presentation."
-        tests:
+        data_tests:
           - not_null
           - relationships:
-              to: ref('dim_module_presentation')
-              field: presentation_key
-      - name: date_key
-        description: "Foreign key to dim_date for the submission relative day; nullable when date_submitted is unknown."
-        tests:
-          - relationships:
-              to: ref('dim_date')
-              field: date_key
+              arguments: {to: "ref('dim_module_presentation')", field: presentation_key}
       - name: demographics_key
-        description: "Foreign key to the enrollment-level demographic profile; nullable when no matching enrollment profile exists."
-        tests:
+        data_tests:
+          - not_null
           - relationships:
-              to: ref('dim_demographics')
-              field: demographics_key
-      - name: assessment_type
-        description: "Assessment type: Exam, TMA or CMA."
-        tests:
+              arguments: {to: "ref('dim_demographics')", field: demographics_key}
+      - name: registration_date_key
+        data_tests:
           - not_null
-      - name: assessment_date
-        description: "Assessment deadline as the OULAD relative day; may be NULL for assessments without a supplied deadline."
-      - name: date_submitted
-        description: "Submission day as an OULAD relative day; nullable when the source is missing."
-      - name: weight
-        description: "Assessment weight."
-        tests:
+          - relationships:
+              arguments: {to: "ref('dim_date')", field: date_key}
+      - name: unregistration_date_key
+        data_tests:
           - not_null
-          - dbt_utils.accepted_range:
-              arguments:
-                min_value: 0
-                max_value: 100
-      - name: score
-        description: "Student assessment score; expected NULL values are retained."
-        tests:
-          - dbt_utils.accepted_range:
-              arguments:
-                min_value: 0
-                max_value: 100
-                inclusive: true
-      - name: is_banked
-        description: "OULAD banked-result flag."
-        tests:
+          - relationships:
+              arguments: {to: "ref('dim_date')", field: date_key}
+      - name: id_student
+        data_tests: [not_null]
+      - name: code_module
+        data_tests: [not_null]
+      - name: code_presentation
+        data_tests: [not_null]
+      - name: final_result
+        data_tests:
           - not_null
           - accepted_values:
-              values: [0, 1]
-      - name: mart_load_timestamp
-        description: "Timestamp when the Gold fact was loaded."
-        tests:
+              arguments: {values: ['Distinction', 'Pass', 'Fail', 'Withdrawn']}
+      - name: is_withdrawn
+        data_tests:
           - not_null
-      - name: mart_load_date
-        description: "Date when the Gold fact was loaded."
-        tests:
+          - accepted_values:
+              arguments: {values: [true, false], quote: false}
+      - name: assessment_count
+        data_tests:
           - not_null
+          - dbt_utils.accepted_range:
+              arguments: {min_value: 0}
+      - name: scored_assessment_count
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments: {min_value: 0}
+      - name: missing_score_count
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments: {min_value: 0}
+      - name: average_score
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments: {min_value: 0, max_value: 100, inclusive: true}
+
+  - name: fact_vle_interactions
+    description: One row per student, module presentation, VLE resource and relative day.
+    columns:
+      - name: vle_interaction_key
+        data_tests: [not_null, unique]
+      - name: student_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: "ref('dim_student')", field: student_key}
+      - name: course_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: "ref('dim_course')", field: course_key}
+      - name: presentation_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: "ref('dim_module_presentation')", field: presentation_key}
+      - name: demographics_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: "ref('dim_demographics')", field: demographics_key}
+      - name: date_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: "ref('dim_date')", field: date_key}
+      - name: code_module
+        data_tests: [not_null]
+      - name: code_presentation
+        data_tests: [not_null]
+      - name: id_student
+        data_tests: [not_null]
+      - name: id_site
+        data_tests: [not_null]
+      - name: relative_day
+        data_tests: [not_null]
+      - name: sum_click
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments: {min_value: 0}

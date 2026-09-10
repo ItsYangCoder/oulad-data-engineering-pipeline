@@ -1,22 +1,19 @@
--- File: 02_dropout_analysis.sql
--- Suggested branch: feature/dropout-analysis
--- Purpose: Measure withdrawal rates and known withdrawal timing.
--- Status: Implementation pending. Replace this guide with the finished code.
--- Input: open_university.oulad_gold.vw_student_outcomes and relevant dimensions.
--- Output: Read-only result set for Metabase; no CREATE, MERGE, INSERT or table rebuild.
--- Grain / business key: One output row per chosen module presentation or demographic group.
---
--- What to put in this file:
--- 1. Define dropout as final_result = 'Withdrawn'; calculate withdrawn_enrollments / all_enrollments in
---    the same group.
--- 2. Report the denominator and guard division by zero; keep a consistent decimal/percentage format.
--- 3. Separate the number withdrawn from the distribution of known date_unregistration values.
--- 4. Keep 93 Withdrawn records without dates in the dropout count and label their timing Unknown; do
---    not reclassify the 9 Fail records with unregistration dates.
--- 5. Group timing by documented relative days/weeks; keep valid pre-start withdrawals and avoid
---    fabricated calendar dates.
---
---
--- Done when: Current-batch full-population dropout counts reconcile to 10,156 of 32,593 enrollments;
---    tests/04_business_checks/02_dropout_checks.sql passes.
--- Read: docs/pipeline_plan.md and docs/assumptions.md.
+-- Measures demographic differences in withdrawal using all enrollments as the denominator.
+select
+    coalesce(d.gender, 'Unknown') as gender,
+    coalesce(d.age_band, 'Unknown') as age_band,
+    coalesce(d.highest_education, 'Unknown') as highest_education,
+    coalesce(d.imd_band, 'Unknown') as imd_band,
+    count(*) as enrollment_count,
+    sum(case when e.is_withdrawn then 1 else 0 end) as withdrawn_count,
+    round(100.0 * sum(case when e.is_withdrawn then 1 else 0 end) / count(*), 2)
+        as withdrawal_rate_pct
+from open_university.oulad_gold.fact_student_enrollment e
+inner join open_university.oulad_gold.dim_demographics d
+    on e.demographics_key = d.demographics_key
+group by
+    coalesce(d.gender, 'Unknown'),
+    coalesce(d.age_band, 'Unknown'),
+    coalesce(d.highest_education, 'Unknown'),
+    coalesce(d.imd_band, 'Unknown')
+order by withdrawal_rate_pct desc, enrollment_count desc;

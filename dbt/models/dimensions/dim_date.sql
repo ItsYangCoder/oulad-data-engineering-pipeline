@@ -1,7 +1,7 @@
 {{ config(enabled=true) }}
 
 -- dbt/models/dimensions/dim_date.sql
--- Grain: one row per non-null relative_day
+-- Grain: one row per observed relative day, plus one Unknown row for missing dates.
 -- Sources:
 --   assessment_clean.date
 --   student_assessment_clean.date_submitted
@@ -27,7 +27,7 @@
 -- No finer-grained timing groups are defined because no business rules
 -- for those boundaries have been supplied.
 -- Missing source dates are not converted to day 0.
--- NULL source dates remain unknown and are excluded from this lookup.
+-- NULL source dates use the Unknown dimension key without inventing a day value.
 -- No actual calendar dates, months, or years are generated.
 
 with assessment_dates as (
@@ -111,24 +111,38 @@ distinct_days as (
 
     where relative_day is not null
 
+),
+
+known_days as (
+    select
+        md5(cast(relative_day as string)) as date_key,
+        relative_day,
+        cast(floor(relative_day / 7.0) as integer) as relative_week,
+        case when relative_day < 0 then true else false end as is_before_presentation,
+        case
+            when relative_day < 0 then 'Pre-Presentation'
+            else 'Presentation Period'
+        end as timing_group
+    from distinct_days
 )
 
 select
-    md5(cast(relative_day as string)) as date_key,
+    date_key,
     relative_day,
-    cast(floor(relative_day / 7.0) as integer) as relative_week,
-
-    case
-        when relative_day < 0 then true
-        else false
-    end as is_before_presentation,
-
-    case
-        when relative_day < 0 then 'Pre-Presentation'
-        else 'Presentation Period'
-    end as timing_group,
-
+    relative_week,
+    is_before_presentation,
+    timing_group,
     current_timestamp() as mart_load_timestamp,
     current_date() as mart_load_date
+from known_days
 
-from distinct_days
+union all
+
+select
+    'UNKNOWN' as date_key,
+    cast(null as integer) as relative_day,
+    cast(null as integer) as relative_week,
+    cast(null as boolean) as is_before_presentation,
+    'Unknown' as timing_group,
+    current_timestamp() as mart_load_timestamp,
+    current_date() as mart_load_date

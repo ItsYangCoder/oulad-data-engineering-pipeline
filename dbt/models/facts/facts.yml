@@ -91,3 +91,103 @@ models:
         description: "Date when the Gold fact was loaded."
         tests:
           - not_null
+  - name: fact_vle_interactions
+    description: "Daily student VLE interactions at one row per module, presentation, student, site, and relative day."
+
+    columns:
+      - name: code_module
+        description: "Module component of the daily VLE business key."
+        tests:
+          - not_null
+
+      - name: code_presentation
+        description: "Presentation component of the daily VLE business key."
+        tests:
+          - not_null
+
+      - name: id_student
+        description: "Student component of the daily VLE business key."
+        tests:
+          - not_null
+
+      - name: id_site
+        description: "VLE resource component of the daily VLE business key."
+        tests:
+          - not_null
+
+      - name: date
+        description: "Relative interaction day component of the daily VLE business key."
+        tests:
+          - not_null
+
+      - name: student_key
+        description: "Foreign key to dim_student."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_student')
+                field: student_key
+
+      - name: course_key
+        description: "Foreign key to dim_course."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_course')
+                field: course_key
+
+      - name: presentation_key
+        description: "Foreign key to dim_module_presentation."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_module_presentation')
+                field: presentation_key
+
+      - name: demographics_key
+        description: "Foreign key to dim_demographics for the matching enrollment profile."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_demographics')
+                field: demographics_key
+
+      - name: date_key
+        description: "Foreign key to dim_date for the interaction relative day."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+
+      - name: sum_click
+        description: "Total clicks recorded for the student-resource-day."
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+
+      - name: activity_type
+        description: "Type of VLE resource."
+
+      - name: resource_week_from
+        description: "Optional first availability week of the VLE resource."
+
+      - name: resource_week_to
+        description: "Optional last availability week of the VLE resource."
+
+      - name: mart_load_timestamp
+        description: "Timestamp when the Gold fact was loaded."
+        tests:
+          - not_null
+
+      - name: mart_load_date
+        description: "Date when the Gold fact was loaded."
+        tests:
+          - not_null

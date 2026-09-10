@@ -207,7 +207,7 @@ src/sql/03_analytics/
 
 GitHub Actions validates pull requests and pushes to `main` by scanning for secrets, blocking newly added destructive SQL, validating YAML and Databricks SQL, and parsing the dbt project.
 
-The Gold layer is currently deployed through the validated Databricks dbt Job. The GitHub deployment workflow remains disabled until its authentication, target, and release process are tested end to end.
+The Gold layer is currently deployed through the validated Databricks dbt Job. The manual GitHub deployment workflow uses service-principal OAuth and triggers that existing Job without creating duplicate resources. See [Databricks CD setup](docs/deployment.md).
 
 ## Current limitations
 

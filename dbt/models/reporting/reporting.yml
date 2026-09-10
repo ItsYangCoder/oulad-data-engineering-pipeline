@@ -1,18 +1,28 @@
-# File: reporting.yml
-# Suggested branch: feature/build-student-outcomes
-# Purpose: Document and test the enrollment-level vw_student_outcomes view.
-# Status: Add the model entry once the reporting SQL is implemented.
-#
-# What the assigned member should put here:
-# 1. Replace models: [] with an entry named vw_student_outcomes.
-# 2. Describe the grain: one code_module + code_presentation + id_student enrollment.
-# 3. Document outcome, registration timing, attempts, credits and aggregated activity.
-# 4. Add full-enrollment-key uniqueness/not_null tests and accepted final_result values.
-# 5. Document dropout as final_result = 'Withdrawn', NULL unknown dates/average scores,
-#    and zero counts/clicks for enrollments with no recorded activity.
-# 6. Reconcile enrollment counts to Silver and verify zero-activity students remain.
-#
-# Done when: 32,593 current-batch enrollments remain, no joined measures multiply,
-# and tests reflect the implemented view and its actual field names.
 version: 2
-models: []
+
+models:
+  - name: vw_student_outcomes
+    description: "One row per student enrollment in a module presentation. Assessment and VLE activity are aggregated separately before joining."
+    tests:
+      - unique:
+          column_name: "concat(code_module, '||', code_presentation, '||', cast(id_student as string))"
+      - not_null:
+          column_name: code_module
+      - not_null:
+          column_name: code_presentation
+      - not_null:
+          column_name: id_student
+    columns:
+      - name: final_result
+        tests:
+          - accepted_values:
+              values: ['Distinction', 'Pass', 'Fail', 'Withdrawn']
+      - name: is_withdrawn
+        tests:
+          - not_null
+      - name: result_count
+        tests:
+          - not_null
+      - name: total_clicks
+        tests:
+          - not_null

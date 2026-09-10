@@ -4,11 +4,20 @@ The deployment workflow triggers the existing Databricks dbt Job and waits for i
 
 ## Authentication
 
-Use a Databricks service principal with OAuth machine-to-machine authentication. Do not create or configure a personal access token.
+Use a Databricks service principal with GitHub OIDC workload identity federation. This lets GitHub obtain short-lived Databricks OAuth tokens without storing a personal access token or a Databricks client secret.
 
 1. Create a service principal named `github-oulad-cd` in Databricks.
 2. Add the service principal to the target workspace.
-3. Generate an OAuth secret for it and copy the secret immediately.
+3. Create a federation policy for the service principal with these GitHub identity values:
+
+   | Field | Value |
+   |---|---|
+   | Issuer | `https://token.actions.githubusercontent.com` |
+   | Organization or owner | `ItsYangCoder` |
+   | Repository | `oulad-data-engineering-pipeline` |
+   | Entity type | `Environment` |
+   | Environment | `production` |
+
 4. Grant the service principal `CAN MANAGE RUN` on the existing OULAD dbt Job.
 5. Keep the Job's current **Run as** identity during the first CD test. Changing **Run as** to the service principal is a separate production-hardening step that requires warehouse, Unity Catalog, and Git source permissions.
 
@@ -21,9 +30,8 @@ Create a GitHub environment named `production`, then configure:
 | Variable | `DATABRICKS_HOST` | Databricks workspace URL, without `/api` |
 | Variable | `DATABRICKS_CLIENT_ID` | Service principal application/client ID |
 | Variable | `DATABRICKS_JOB_ID` | Existing OULAD dbt Job ID |
-| Secret | `DATABRICKS_CLIENT_SECRET` | Service principal OAuth secret |
 
-Do not add `DATABRICKS_TOKEN`.
+No Databricks secret is required. Do not add `DATABRICKS_TOKEN` or `DATABRICKS_CLIENT_SECRET`.
 
 ## First deployment test
 

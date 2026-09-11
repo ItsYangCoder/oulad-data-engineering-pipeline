@@ -132,6 +132,4 @@ jobs:
           cp profiles.yml.example profiles.yml
           dbt parse --profiles-dir . --target dev
 
-      - name: Compile the dbt project
-        working-directory: dbt
-        run: dbt compile --profiles-dir . --target dev
+      

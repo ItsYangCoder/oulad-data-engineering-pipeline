@@ -27,10 +27,10 @@ This evidence predates the analytics integration below.
 | Item | Status |
 | --- | --- |
 | Integrated analytics and new audit tests | Local fixture/static verification only; run against Databricks after integration |
-| Cohort dashboard | Issue #18 checklist says complete; attach the actual accessible link and interpretation |
-| Dropout dashboard | Angela reported completion in PR #58 comment on September 11; accessible link still needed |
-| VLE dashboard | PR #51 checklist does not yet provide completed visual evidence |
-| Assessment dashboard | Collect its link with the other three sections for a complete handoff |
+| Cohort dashboard | Attach the accessible Databricks SQL dashboard link and interpretation |
+| Dropout dashboard | Attach the accessible Databricks SQL dashboard link and interpretation |
+| VLE dashboard | Add completed Databricks SQL dashboard visual evidence |
+| Assessment dashboard | Collect its Databricks SQL dashboard link with the other three sections for a complete handoff |
 | CD release evidence | Capture the workflow run, Job ID, Databricks run ID and executed commit together |
 
 Do not mark the overall documentation/review issues complete until these items
@@ -42,7 +42,7 @@ content or successful runtime execution.
 After CI passes, run the existing full dbt Job against the integrated revision.
 Run all four files in tests/04_business_checks and the corresponding analytics.
 These SQL files are manual checks and are not automatically executed by dbt build.
-Record outputs and interpret the four business areas in the dashboard.
+Record outputs and interpret the four business areas in the Databricks SQL dashboard.
 The deployment guide records the observed Job configuration; source freshness
 remains a separately configured check.
 

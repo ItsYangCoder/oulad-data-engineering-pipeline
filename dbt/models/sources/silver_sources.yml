@@ -5,6 +5,10 @@ sources:
     description: Clean OULAD tables produced by the Silver layer.
     database: open_university
     schema: oulad_silver
+    freshness:
+      warn_after: {count: 24, period: hour}
+      error_after: {count: 48, period: hour}
+    loaded_at_field: clean_load_timestamp
     tables:
       - name: assessment_clean
         description: One cleaned record per assessment.
@@ -51,6 +55,12 @@ sources:
           - name: clean_load_timestamp
             data_tests:
               - not_null
+        data_tests:
+          - dbt_utils.unique_combination_of_columns:
+              arguments:
+                combination_of_columns:
+                  - id_assessment
+                  - id_student
 
       - name: student_info_clean
         description: One cleaned student enrollment per module presentation.
@@ -67,6 +77,13 @@ sources:
           - name: clean_load_timestamp
             data_tests:
               - not_null
+        data_tests:
+          - dbt_utils.unique_combination_of_columns:
+              arguments:
+                combination_of_columns:
+                  - code_module
+                  - code_presentation
+                  - id_student
 
       - name: student_registration_clean
         description: Registration dates for each student enrollment.
@@ -83,6 +100,13 @@ sources:
           - name: clean_load_timestamp
             data_tests:
               - not_null
+        data_tests:
+          - dbt_utils.unique_combination_of_columns:
+              arguments:
+                combination_of_columns:
+                  - code_module
+                  - code_presentation
+                  - id_student
 
       - name: student_vle_clean
         description: Daily clicks per student, module presentation, and VLE resource.
@@ -108,6 +132,15 @@ sources:
           - name: clean_load_timestamp
             data_tests:
               - not_null
+        data_tests:
+          - dbt_utils.unique_combination_of_columns:
+              arguments:
+                combination_of_columns:
+                  - code_module
+                  - code_presentation
+                  - id_student
+                  - id_site
+                  - date
 
       - name: vle_clean
         description: One cleaned VLE resource per module presentation.
@@ -124,3 +157,10 @@ sources:
           - name: clean_load_timestamp
             data_tests:
               - not_null
+        data_tests:
+          - dbt_utils.unique_combination_of_columns:
+              arguments:
+                combination_of_columns:
+                  - code_module
+                  - code_presentation
+                  - id_site

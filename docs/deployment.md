@@ -37,4 +37,18 @@ The first version is intentionally manual. An automatic post-CI trigger can be e
 
 ## Deployment scope
 
-The existing Databricks Job runs `dbt deps` followed by `dbt build` for the dbt project. It builds and tests the modeled layers according to dbt dependencies; it does not run the raw-data setup notebook.
+The existing Databricks Job runs `dbt deps`, source freshness, and `dbt build` for the dbt project. It builds and tests the modeled layers according to dbt dependencies; it does not run the raw-data setup notebook.
+
+## Revision integrity
+
+The GitHub workflow triggers an existing Databricks Job; it does not upload repository files. Before using the workflow as a release mechanism, configure the Job's Git source and release process so the Job runs the same commit that passed CI. Record that commit in the job run metadata or deployment summary. A successful GitHub workflow alone is not proof that the Databricks Job used the same source revision.
+
+The Job should run these commands from the `dbt` project directory:
+
+```bash
+dbt deps
+dbt source freshness
+dbt build --target production
+```
+
+The source freshness command uses `clean_load_timestamp` from the Silver source definitions. It must run with a real Databricks profile; the parse-only CI profile intentionally cannot perform this check.

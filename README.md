@@ -209,6 +209,8 @@ GitHub Actions validates pull requests and pushes to `main` by scanning for secr
 
 The Gold layer is currently deployed through the validated Databricks dbt Job. The manual GitHub deployment workflow uses service-principal OAuth and triggers that existing Job without creating duplicate resources. See [Databricks CD setup](docs/deployment.md).
 
+CI performs static SQL/YAML checks and dbt parse/compile checks. Runtime dbt models, source freshness, and data-quality tests run in the Databricks Job because they require access to the Silver tables. The Databricks Job must be Git-linked to the same repository and configured to run the commit selected by the release process; triggering a job alone does not deploy repository changes.
+
 ## Current limitations
 
 - Metabase visuals and their links or screenshots are not yet included.

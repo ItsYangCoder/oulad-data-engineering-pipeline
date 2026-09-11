@@ -33,6 +33,9 @@ WITH cohort_summary AS (
 )
 
 SELECT
+    -- Combined label for charting (avoids Group-by limitation in Databricks viz)
+    CONCAT(code_module, ' ', code_presentation) AS cohort_label,
+
     code_module,
     code_presentation,
 

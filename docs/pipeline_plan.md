@@ -1,5 +1,6 @@
 # OULAD Data Engineering Pipeline Plan
 
+
 **Suggested branch:** `docs/update-pipeline-plan`
 
 ## 1. Project Purpose
@@ -575,7 +576,7 @@ display alone does not automatically fail a pipeline.
 7. Build `fact_student_enrollment` and `fact_vle_interactions`.
 8. Build `vw_student_outcomes` using the enrollment fact and aggregated VLE activity.
 9. Run dbt tests and Gold reconciliation checks.
-10. Implement analytics, business checks and Metabase dashboards.
+10. Implement analytics, business checks and Databricks SQL dashboards.
 11. Create the ERD and complete the project README.
 12. Configure and validate orchestration and CI/CD when the relevant steps work.
 
@@ -652,7 +653,7 @@ Transformation responsibilities:
 - `dbt/models/dimensions/`: the five required dimensions and their YAML
 - `dbt/models/facts/`: the two required facts and their YAML
 - `dbt/models/reporting/`: the outcomes view and its YAML
-- `src/sql/03_analytics/`: four read-only queries for Metabase
+- `src/sql/03_analytics/`: four read-only queries for Databricks SQL dashboards
 
 Validation responsibilities:
 

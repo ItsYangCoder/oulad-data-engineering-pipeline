@@ -76,7 +76,7 @@ Use a stable `check_id`. Example: `silver_student_vle_complete_business_key`. Do
 
 ## Table grain and relationships
 
-### `oulad_dq.data_quality_results`
+### `open_university.oulad_quality.data_quality_results`
 
 Grain: **one row per `run_id` + dataset + `check_id`**.
 
@@ -84,7 +84,7 @@ Grain: **one row per `run_id` + dataset + `check_id`**.
 
 The dataset is identified by four fields: `dataset_catalog`, `dataset_schema`, `dataset_table`, and `dataset_layer`. This supports every OULAD table rather than hard-coding the current seven sources.
 
-### `oulad_dq.data_quality_failures`
+### `open_university.oulad_quality.data_quality_failures`
 
 Grain: **one row per failed record or failed business key**.
 
@@ -148,10 +148,9 @@ Use `critical_failures` and `stop_pipeline` for the stop indicator. Use `vw_dq_f
 ## Definition of done
 
 - Run `00_create_data_quality_contract.sql` twice without errors.
-- Confirm both Delta tables appear under `open_university.oulad_dq`.
+- Confirm both Delta tables appear under `open_university.oulad_quality`.
 - Load at least one row for each status and each check category in a development environment.
 - Confirm `NOT_APPLICABLE` is excluded from `applicable_checks` and `pass_rate_pct`.
 - Confirm any `FAIL` + `CRITICAL` result exposes `stop_pipeline = true`.
 - Confirm all eight validation queries return zero rows.
 - Confirm the dashboard drill-down follows Overview -> Dataset -> Check -> Failure.
-

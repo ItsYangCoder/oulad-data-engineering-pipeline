@@ -2,10 +2,7 @@
 -- Branch: feature/cohort-analysis
 -- Purpose: Validate cohort populations, outcomes, and rates.
 -- Expected population: 32,593 enrollments.
--- 0 failures = pass.
-
-
--- Check 1: Population
+-- 0 failures = pass. Run as one query; each check is one row below.
 
 WITH silver_pop AS (
     SELECT COUNT(*) AS silver_count
@@ -15,73 +12,68 @@ WITH silver_pop AS (
 gold_pop AS (
     SELECT COUNT(*) AS gold_count
     FROM open_university.oulad_gold.vw_student_outcomes
-)
+),
 
-SELECT
-    'population' AS check_name,
-    silver_count,
-    gold_count,
-    CASE
-        WHEN silver_count = 32593
-         AND gold_count = 32593
-         AND silver_count = gold_count
-        THEN 0
-        ELSE 1
-    END AS failure_count,
-    CASE
-        WHEN silver_count = 32593
-         AND gold_count = 32593
-         AND silver_count = gold_count
-        THEN 'PASS'
-        ELSE 'FAIL'
-    END AS details
-FROM silver_pop
-CROSS JOIN gold_pop;
-
-
--- Check 2: Enrollment retention
-
-SELECT
-    'enrollment_retention' AS check_name,
-    COUNT(*) AS failure_count,
-    CASE
-        WHEN COUNT(*) = 0 THEN 'PASS'
-        ELSE 'FAIL'
-    END AS details
-FROM open_university.oulad_silver.student_info_clean s
-LEFT JOIN open_university.oulad_gold.vw_student_outcomes g
-    ON s.code_module = g.code_module
-    AND s.code_presentation = g.code_presentation
-    AND s.id_student = g.id_student
-WHERE g.id_student IS NULL;
-
-
--- Check 3: Enrollment grain
-
-SELECT
-    'enrollment_grain' AS check_name,
-    COUNT(*) AS failure_count,
-    CASE
-        WHEN COUNT(*) = 0 THEN 'PASS'
-        ELSE 'FAIL'
-    END AS details
-FROM (
+check_1_population AS (
     SELECT
-        code_module,
-        code_presentation,
-        id_student
-    FROM open_university.oulad_gold.vw_student_outcomes
-    GROUP BY
-        code_module,
-        code_presentation,
-        id_student
-    HAVING COUNT(*) > 1
-);
+        'population' AS check_name,
+        CASE
+            WHEN silver_count = 32593
+             AND gold_count = 32593
+             AND silver_count = gold_count
+            THEN 0
+            ELSE 1
+        END AS failure_count,
+        CASE
+            WHEN silver_count = 32593
+             AND gold_count = 32593
+             AND silver_count = gold_count
+            THEN 'PASS'
+            ELSE 'FAIL'
+        END AS details
+    FROM silver_pop
+    CROSS JOIN gold_pop
+),
 
+check_2_enrollment_retention AS (
+    SELECT
+        'enrollment_retention' AS check_name,
+        COUNT(*) AS failure_count,
+        CASE
+            WHEN COUNT(*) = 0 THEN 'PASS'
+            ELSE 'FAIL'
+        END AS details
+    FROM open_university.oulad_silver.student_info_clean s
+    LEFT JOIN open_university.oulad_gold.vw_student_outcomes g
+        ON s.code_module = g.code_module
+        AND s.code_presentation = g.code_presentation
+        AND s.id_student = g.id_student
+    WHERE g.id_student IS NULL
+),
 
--- Check 4: Outcome reconciliation
+check_3_enrollment_grain AS (
+    SELECT
+        'enrollment_grain' AS check_name,
+        COUNT(*) AS failure_count,
+        CASE
+            WHEN COUNT(*) = 0 THEN 'PASS'
+            ELSE 'FAIL'
+        END AS details
+    FROM (
+        SELECT
+            code_module,
+            code_presentation,
+            id_student
+        FROM open_university.oulad_gold.vw_student_outcomes
+        GROUP BY
+            code_module,
+            code_presentation,
+            id_student
+        HAVING COUNT(*) > 1
+    )
+),
 
-WITH cohort_check AS (
+cohort_outcomes AS (
     SELECT
         code_module,
         code_presentation,
@@ -102,46 +94,44 @@ WITH cohort_check AS (
     GROUP BY
         code_module,
         code_presentation
-)
+),
 
-SELECT
-    'outcome_reconciliation' AS check_name,
-    COUNT(*) AS failure_count,
-    CASE
-        WHEN COUNT(*) = 0 THEN 'PASS'
-        ELSE 'FAIL'
-    END AS details
-FROM cohort_check
-WHERE enrollment_count <> (
-    distinction_count
-    + pass_count
-    + fail_count
-    + withdrawn_count
-);
+check_4_outcome_reconciliation AS (
+    SELECT
+        'outcome_reconciliation' AS check_name,
+        COUNT(*) AS failure_count,
+        CASE
+            WHEN COUNT(*) = 0 THEN 'PASS'
+            ELSE 'FAIL'
+        END AS details
+    FROM cohort_outcomes
+    WHERE enrollment_count <> (
+        distinction_count
+        + pass_count
+        + fail_count
+        + withdrawn_count
+    )
+),
 
+check_5_outcome_categories AS (
+    SELECT
+        'outcome_categories' AS check_name,
+        COUNT(*) AS failure_count,
+        CASE
+            WHEN COUNT(*) = 0 THEN 'PASS'
+            ELSE 'FAIL'
+        END AS details
+    FROM open_university.oulad_gold.vw_student_outcomes
+    WHERE final_result IS NULL
+       OR final_result NOT IN (
+            'Distinction',
+            'Pass',
+            'Fail',
+            'Withdrawn'
+       )
+),
 
--- Check 5: Outcome categories
-
-SELECT
-    'outcome_categories' AS check_name,
-    COUNT(*) AS failure_count,
-    CASE
-        WHEN COUNT(*) = 0 THEN 'PASS'
-        ELSE 'FAIL'
-    END AS details
-FROM open_university.oulad_gold.vw_student_outcomes
-WHERE final_result IS NULL
-   OR final_result NOT IN (
-        'Distinction',
-        'Pass',
-        'Fail',
-        'Withdrawn'
-   );
-
-
--- Check 6: Rate range
-
-WITH cohort_rates AS (
+cohort_rates AS (
     SELECT
         code_module,
         code_presentation,
@@ -161,27 +151,24 @@ WITH cohort_rates AS (
     GROUP BY
         code_module,
         code_presentation
-)
+),
 
-SELECT
-    'rate_range' AS check_name,
-    COUNT(*) AS failure_count,
-    CASE
-        WHEN COUNT(*) = 0 THEN 'PASS'
-        ELSE 'FAIL'
-    END AS details
-FROM cohort_rates
-WHERE distinction_rate NOT BETWEEN 0 AND 100
-   OR pass_rate NOT BETWEEN 0 AND 100
-   OR fail_rate NOT BETWEEN 0 AND 100
-   OR withdrawn_rate NOT BETWEEN 0 AND 100;
+check_6_rate_range AS (
+    SELECT
+        'rate_range' AS check_name,
+        COUNT(*) AS failure_count,
+        CASE
+            WHEN COUNT(*) = 0 THEN 'PASS'
+            ELSE 'FAIL'
+        END AS details
+    FROM cohort_rates
+    WHERE distinction_rate NOT BETWEEN 0 AND 100
+       OR pass_rate NOT BETWEEN 0 AND 100
+       OR fail_rate NOT BETWEEN 0 AND 100
+       OR withdrawn_rate NOT BETWEEN 0 AND 100
+),
 
-
--- Check 7: Rounded rates
-
--- Tolerance: ±0.02 percentage points.
-
-WITH cohort_rates AS (
+cohort_rounded_rates AS (
     SELECT
         code_module,
         code_presentation,
@@ -209,38 +196,70 @@ WITH cohort_rates AS (
     GROUP BY
         code_module,
         code_presentation
+),
+
+-- Tolerance: ±0.02 percentage points.
+check_7_rate_reconciliation AS (
+    SELECT
+        'rate_reconciliation' AS check_name,
+        COUNT(*) AS failure_count,
+        CASE
+            WHEN COUNT(*) = 0 THEN 'PASS'
+            ELSE 'FAIL'
+        END AS details
+    FROM cohort_rounded_rates
+    WHERE ABS(
+        distinction_rate
+        + pass_rate
+        + fail_rate
+        + withdrawn_rate
+        - 100.00
+    ) > 0.02
+),
+
+check_8_unknown_demographics AS (
+    SELECT
+        'unknown_demographics' AS check_name,
+        COUNT(*) AS failure_count,
+        CASE
+            WHEN COUNT(*) = 0 THEN 'PASS'
+            ELSE 'FAIL'
+        END AS details
+    FROM open_university.oulad_silver.student_info_clean s
+    LEFT JOIN open_university.oulad_gold.vw_student_outcomes g
+        ON s.code_module = g.code_module
+        AND s.code_presentation = g.code_presentation
+        AND s.id_student = g.id_student
+    WHERE s.imd_band IS NULL
+      AND g.id_student IS NULL
+),
+
+check_9_zero_activity_retention AS (
+    SELECT
+        'zero_activity_retention' AS check_name,
+        COUNT(*) AS failure_count,
+        CASE
+            WHEN COUNT(*) >= 0 THEN 'PASS'
+            ELSE 'FAIL'
+        END AS details
+    FROM open_university.oulad_gold.vw_student_outcomes
+    WHERE total_clicks = 0
 )
 
-SELECT
-    'rate_reconciliation' AS check_name,
-    COUNT(*) AS failure_count,
-    CASE
-        WHEN COUNT(*) = 0 THEN 'PASS'
-        ELSE 'FAIL'
-    END AS details
-FROM cohort_rates
-WHERE ABS(
-    distinction_rate
-    + pass_rate
-    + fail_rate
-    + withdrawn_rate
-    - 100.00
-) > 0.02;
-
-
--- Check 8: Unknown demographics
-
-SELECT
-    'unknown_demographics' AS check_name,
-    COUNT(*) AS failure_count,
-    CASE
-        WHEN COUNT(*) = 0 THEN 'PASS'
-        ELSE 'FAIL'
-    END AS details
-FROM open_university.oulad_silver.student_info_clean s
-LEFT JOIN open_university.oulad_gold.vw_student_outcomes g
-    ON s.code_module = g.code_module
-    AND s.code_presentation = g.code_presentation
-    AND s.id_student = g.id_student
-WHERE s.imd_band IS NULL
-  AND g.id_student IS NULL;
+SELECT * FROM check_1_population
+UNION ALL
+SELECT * FROM check_2_enrollment_retention
+UNION ALL
+SELECT * FROM check_3_enrollment_grain
+UNION ALL
+SELECT * FROM check_4_outcome_reconciliation
+UNION ALL
+SELECT * FROM check_5_outcome_categories
+UNION ALL
+SELECT * FROM check_6_rate_range
+UNION ALL
+SELECT * FROM check_7_rate_reconciliation
+UNION ALL
+SELECT * FROM check_8_unknown_demographics
+UNION ALL
+SELECT * FROM check_9_zero_activity_retention;

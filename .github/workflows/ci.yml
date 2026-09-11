@@ -132,4 +132,4 @@ jobs:
           cp profiles.yml.example profiles.yml
           dbt parse --profiles-dir . --target dev
 
-      
+

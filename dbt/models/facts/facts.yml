@@ -112,6 +112,10 @@ models:
         data_tests: [not_null]
       - name: relative_day
         data_tests: [not_null]
+      - name: mart_load_timestamp
+        data_tests: [not_null]
+      - name: mart_load_date
+        data_tests: [not_null]
       - name: sum_click
         data_tests:
           - not_null

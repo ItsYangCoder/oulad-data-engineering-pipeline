@@ -2,6 +2,8 @@
 
 A reproducible Databricks pipeline for the Open University Learning Analytics Dataset (OULAD). It transforms seven source files through Bronze, Silver, and Gold layers for student outcomes, assessments, and VLE engagement analysis.
 
+The analytics compare course cohorts, withdrawal patterns, assessment performance, and recorded VLE engagement. See the [handoff and evidence status](docs/handoff.md) for completed work and remaining dashboard deliverables.
+
 ## Architecture
 
 ```mermaid
@@ -84,7 +86,7 @@ See [Databricks CD setup](docs/deployment.md) for configuration details.
 
 ## Validation snapshot
 
-Previously recorded validation: `PASS=125`, `WARN=0`, `ERROR=0`, and `SKIP=0`. This is a historical snapshot, not validation of subsequent code changes.
+User-provided Databricks evidence on September 11, 2026: `PASS=132`, `WARN=0`, `ERROR=0`, `SKIP=0` (7 table models, 1 view, 124 data tests). This run predates the final analytics integration; it is not evidence that the newly integrated queries or tests ran against Databricks.
 
 | Check | Result |
 | --- | ---: |

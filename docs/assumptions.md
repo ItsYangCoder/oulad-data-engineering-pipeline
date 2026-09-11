@@ -21,8 +21,9 @@ Bronze tables preserve the original source records and values.
 
 ## 2. Missing-Value Handling
 
-Source placeholders will be converted to SQL NULL values in the Clean
-layer.
+Source placeholders are normalized to SQL NULL during cleaning. Missing
+demographic text is then labeled `Unknown` in Silver; missing scores and
+relative dates remain NULL.
 
 The pipeline will not guess or invent missing values unless an approved
 business rule is provided.
@@ -31,11 +32,20 @@ business rule is provided.
 
 The `student_info_raw` table contains 1,111 missing `imd_band` values.
 
-These values will be converted to NULL. They will not be replaced with
-a region average, mode, or default demographic category.
+Missing gender, region, education, IMD band, age band, and disability are
+labeled `Unknown` in Silver. This is a missingness label, not an inferred
+demographic value. Bronze preserves the original source values.
+Gold and analytics consume these labels without additional replacements.
 
-Analytics may display them as `Unknown` without modifying the stored
-Clean value.
+An enrollment with no matching VLE summary has zero recorded clicks,
+active days, and resources. The reporting view retains these zero defaults
+after its LEFT JOIN. This does not imply that the student never studied.
+Missing assessment scores and dates must not be converted to zero.
+
+After deploying this change, rerun student_info_clean against the complete
+Bronze student population, validate Silver, then rebuild all Gold models.
+Demographic hashes change for previously missing attributes, so dimensions
+and both facts must be rebuilt together before reports are refreshed.
 
 ## 4. Missing Assessment Dates
 

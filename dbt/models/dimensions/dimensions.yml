@@ -43,9 +43,10 @@ models:
               arguments: {values: ['Pre-Presentation', 'Presentation Period', 'Unknown']}
 
   - name: dim_demographics
-    description: One row per distinct null-safe demographic profile.
+    description: One row per distinct demographic profile standardized in Silver.
     columns:
       - name: demographics_key
         data_tests: [not_null, unique]
       - name: imd_band
-        description: Nullable because the source contains unknown IMD bands.
+        description: Missing source IMD bands are labeled Unknown in Silver.
+        data_tests: [not_null]

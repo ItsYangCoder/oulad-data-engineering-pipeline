@@ -36,6 +36,7 @@ select
     e.scored_assessment_count,
     e.missing_score_count,
     e.average_score,
+    -- No matching activity summary means no recorded activity, not a missing score.
     coalesce(v.total_clicks, 0) as total_clicks,
     coalesce(v.active_days, 0) as active_days,
     coalesce(v.resource_count, 0) as resource_count

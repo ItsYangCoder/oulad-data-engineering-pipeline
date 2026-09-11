@@ -84,12 +84,12 @@ inner join {{ ref('dim_module_presentation') }} dp
     on j.code_module = dp.code_module
     and j.code_presentation = dp.code_presentation
 inner join {{ ref('dim_demographics') }} dd
-    on coalesce(j.gender, '__NULL__') = coalesce(dd.gender, '__NULL__')
-    and coalesce(j.region, '__NULL__') = coalesce(dd.region, '__NULL__')
-    and coalesce(j.highest_education, '__NULL__') = coalesce(dd.highest_education, '__NULL__')
-    and coalesce(j.imd_band, '__NULL__') = coalesce(dd.imd_band, '__NULL__')
-    and coalesce(j.age_band, '__NULL__') = coalesce(dd.age_band, '__NULL__')
-    and coalesce(j.disability, '__NULL__') = coalesce(dd.disability, '__NULL__')
+    on j.gender = dd.gender
+    and j.region = dd.region
+    and j.highest_education = dd.highest_education
+    and j.imd_band = dd.imd_band
+    and j.age_band = dd.age_band
+    and j.disability = dd.disability
 left join {{ ref('dim_date') }} dr
     on j.date_registration = dr.relative_day
 left join {{ ref('dim_date') }} du

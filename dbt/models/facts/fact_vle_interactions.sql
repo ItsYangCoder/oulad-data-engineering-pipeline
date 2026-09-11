@@ -58,11 +58,11 @@ inner join {{ ref('dim_module_presentation') }} dp
     on di.code_module = dp.code_module
     and di.code_presentation = dp.code_presentation
 inner join {{ ref('dim_demographics') }} dd
-    on coalesce(ep.gender, '__NULL__') = coalesce(dd.gender, '__NULL__')
-    and coalesce(ep.region, '__NULL__') = coalesce(dd.region, '__NULL__')
-    and coalesce(ep.highest_education, '__NULL__') = coalesce(dd.highest_education, '__NULL__')
-    and coalesce(ep.imd_band, '__NULL__') = coalesce(dd.imd_band, '__NULL__')
-    and coalesce(ep.age_band, '__NULL__') = coalesce(dd.age_band, '__NULL__')
-    and coalesce(ep.disability, '__NULL__') = coalesce(dd.disability, '__NULL__')
+    on ep.gender = dd.gender
+    and ep.region = dd.region
+    and ep.highest_education = dd.highest_education
+    and ep.imd_band = dd.imd_band
+    and ep.age_band = dd.age_band
+    and ep.disability = dd.disability
 inner join {{ ref('dim_date') }} dt
     on di.date = dt.relative_day

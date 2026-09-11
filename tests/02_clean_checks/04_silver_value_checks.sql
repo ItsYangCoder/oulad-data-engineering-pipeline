@@ -178,7 +178,7 @@ SELECT
 
 FROM open_university.oulad_silver.student_info_clean
 
-WHERE gender NOT IN ('F', 'M')
+WHERE gender NOT IN ('F', 'M', 'Unknown')
    OR gender IS NULL
 
 UNION ALL
@@ -198,7 +198,7 @@ SELECT
 
 FROM open_university.oulad_silver.student_info_clean
 
-WHERE disability NOT IN ('Y', 'N')
+WHERE disability NOT IN ('Y', 'N', 'Unknown')
    OR disability IS NULL
 
 UNION ALL

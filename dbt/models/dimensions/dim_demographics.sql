@@ -1,7 +1,7 @@
 {{ config(enabled=true) }}
 
 -- Grain: one distinct demographic profile.
--- NULL attributes remain NULL but are handled consistently when generating the key.
+-- Missing demographic values are standardized in Silver before this dimension is built.
 
 with source_demographics as (
 
@@ -21,12 +21,12 @@ select
     md5(
         concat_ws(
             '||',
-            coalesce(gender, '__NULL__'),
-            coalesce(region, '__NULL__'),
-            coalesce(highest_education, '__NULL__'),
-            coalesce(imd_band, '__NULL__'),
-            coalesce(age_band, '__NULL__'),
-            coalesce(disability, '__NULL__')
+            gender,
+            region,
+            highest_education,
+            imd_band,
+            age_band,
+            disability
         )
     )                    as demographics_key,
     gender,

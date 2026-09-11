@@ -14,11 +14,11 @@
 
 USE CATALOG open_university;
 
-CREATE SCHEMA IF NOT EXISTS oulad_dq
+CREATE SCHEMA IF NOT EXISTS open_university.oulad_quality
 COMMENT 'Shared data-quality results, failed records, and dashboard views for all OULAD layers';
 
 -- One row per dataset check per execution run.
-CREATE TABLE IF NOT EXISTS oulad_dq.data_quality_results (
+CREATE TABLE IF NOT EXISTS open_university.oulad_quality.data_quality_results (
     check_result_id       STRING            NOT NULL COMMENT 'Unique result identifier, normally uuid()',
     run_id                STRING            NOT NULL COMMENT 'Shared identifier for every check in one pipeline or test run',
     run_started_at        TIMESTAMP         NOT NULL COMMENT 'UTC timestamp when the data-quality run started',
@@ -60,7 +60,7 @@ TBLPROPERTIES (
 );
 
 -- One row per failed source record or failed business key.
-CREATE TABLE IF NOT EXISTS oulad_dq.data_quality_failures (
+CREATE TABLE IF NOT EXISTS open_university.oulad_quality.data_quality_failures (
     failure_id            STRING            NOT NULL COMMENT 'Unique failure identifier, normally uuid()',
     check_result_id       STRING            NOT NULL COMMENT 'Links to data_quality_results.check_result_id',
     run_id                STRING            NOT NULL COMMENT 'Links the failure to its data-quality run',
@@ -91,14 +91,14 @@ TBLPROPERTIES (
 
 -- Latest completed run. If the latest run is still active, it becomes visible
 -- only after run_completed_at is populated for its result rows.
-CREATE OR REPLACE VIEW oulad_dq.vw_dq_latest_run_results
+CREATE OR REPLACE VIEW open_university.oulad_quality.vw_dq_latest_run_results
 COMMENT 'All check results from the most recently completed data-quality run'
 AS
 WITH completed_runs AS (
     SELECT
         run_id,
         MAX(run_completed_at) AS completed_at
-    FROM oulad_dq.data_quality_results
+    FROM open_university.oulad_quality.data_quality_results
     WHERE run_completed_at IS NOT NULL
     GROUP BY run_id
 ),
@@ -108,13 +108,13 @@ latest_run AS (
     QUALIFY ROW_NUMBER() OVER (ORDER BY completed_at DESC, run_id DESC) = 1
 )
 SELECT r.*
-FROM oulad_dq.data_quality_results r
+FROM open_university.oulad_quality.data_quality_results r
 INNER JOIN latest_run l
     ON r.run_id = l.run_id;
 
 -- Dashboard landing page: answers health, pass rate, failures, stop decision,
 -- affected datasets, and recency in one row.
-CREATE OR REPLACE VIEW oulad_dq.vw_dq_dashboard_overview
+CREATE OR REPLACE VIEW open_university.oulad_quality.vw_dq_dashboard_overview
 COMMENT 'Single-row summary for the latest completed run'
 AS
 SELECT
@@ -141,10 +141,10 @@ SELECT
     END) AS datasets_affected,
     MAX(run_completed_at) AS last_checked,
     COUNT_IF(stop_pipeline) > 0 AS stop_pipeline
-FROM oulad_dq.vw_dq_latest_run_results;
+FROM open_university.oulad_quality.vw_dq_latest_run_results;
 
 -- Dataset level: click from the overview into the affected table.
-CREATE OR REPLACE VIEW oulad_dq.vw_dq_dataset_health
+CREATE OR REPLACE VIEW open_university.oulad_quality.vw_dq_dataset_health
 COMMENT 'Latest-run health and pass rate by dataset'
 AS
 SELECT
@@ -171,7 +171,7 @@ SELECT
     COUNT_IF(stop_pipeline) AS critical_failures,
     MAX(executed_at) AS last_checked,
     COUNT_IF(stop_pipeline) > 0 AS stop_pipeline
-FROM oulad_dq.vw_dq_latest_run_results
+FROM open_university.oulad_quality.vw_dq_latest_run_results
 GROUP BY
     run_id,
     dataset_catalog,
@@ -180,7 +180,7 @@ GROUP BY
     dataset_layer;
 
 -- Check level: shows exactly what is broken and the associated rule.
-CREATE OR REPLACE VIEW oulad_dq.vw_dq_problem_checks
+CREATE OR REPLACE VIEW open_university.oulad_quality.vw_dq_problem_checks
 COMMENT 'Latest-run WARN and FAIL checks for check-level drill-down'
 AS
 SELECT
@@ -210,11 +210,11 @@ SELECT
     fail_pct,
     message,
     query_reference
-FROM oulad_dq.vw_dq_latest_run_results
+FROM open_university.oulad_quality.vw_dq_latest_run_results
 WHERE status IN ('WARN', 'FAIL');
 
 -- Failure level: actual failed rows/keys linked to their check.
-CREATE OR REPLACE VIEW oulad_dq.vw_dq_failure_detail
+CREATE OR REPLACE VIEW open_university.oulad_quality.vw_dq_failure_detail
 COMMENT 'Latest-run failed rows and failed keys for final dashboard drill-down'
 AS
 SELECT
@@ -240,19 +240,18 @@ SELECT
     f.failure_message,
     f.failed_record_json,
     f.failure_metadata
-FROM oulad_dq.vw_dq_latest_run_results r
-INNER JOIN oulad_dq.data_quality_failures f
+FROM open_university.oulad_quality.vw_dq_latest_run_results r
+INNER JOIN open_university.oulad_quality.data_quality_failures f
     ON r.check_result_id = f.check_result_id
     AND r.run_id = f.run_id
 WHERE r.status IN ('WARN', 'FAIL');
 
 -- Historical trend source: supports "when did it start?", "is it getting
 -- worse?", and "which dataset fails most often?" without discarding history.
-CREATE OR REPLACE VIEW oulad_dq.vw_dq_history
+CREATE OR REPLACE VIEW open_university.oulad_quality.vw_dq_history
 COMMENT 'Historical check results with dashboard-friendly dataset name'
 AS
 SELECT
     *,
     CONCAT_WS('.', dataset_catalog, dataset_schema, dataset_table) AS dataset
-FROM oulad_dq.data_quality_results;
-
+FROM open_university.oulad_quality.data_quality_results;

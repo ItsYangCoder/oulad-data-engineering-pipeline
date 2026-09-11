@@ -14,7 +14,7 @@ SELECT
     dataset_table,
     check_id,
     COUNT(*) AS duplicate_count
-FROM oulad_dq.data_quality_results
+FROM open_university.oulad_quality.data_quality_results
 GROUP BY
     run_id,
     dataset_catalog,
@@ -25,7 +25,7 @@ HAVING COUNT(*) > 1;
 
 -- 2. Contract enums are valid.
 SELECT *
-FROM oulad_dq.data_quality_results
+FROM open_university.oulad_quality.data_quality_results
 WHERE check_type NOT IN (
         'NULL',
         'UNIQUE',
@@ -40,7 +40,7 @@ WHERE check_type NOT IN (
 
 -- 3. Counts and percentages are internally consistent.
 SELECT *
-FROM oulad_dq.data_quality_results
+FROM open_university.oulad_quality.data_quality_results
 WHERE fail_count < 0
     OR total_count < 0
     OR fail_count > total_count
@@ -52,27 +52,27 @@ WHERE fail_count < 0
 
 -- 4. Critical stop rule is exact and cannot silently drift.
 SELECT *
-FROM oulad_dq.data_quality_results
+FROM open_university.oulad_quality.data_quality_results
 WHERE stop_pipeline <> (status = 'FAIL' AND severity = 'CRITICAL');
 
 -- 5. Completed runs have sensible timestamps.
 SELECT *
-FROM oulad_dq.data_quality_results
+FROM open_university.oulad_quality.data_quality_results
 WHERE executed_at < run_started_at
     OR run_completed_at < run_started_at
     OR run_completed_at < executed_at;
 
 -- 6. Failure details always have a parent result.
 SELECT f.*
-FROM oulad_dq.data_quality_failures f
-LEFT ANTI JOIN oulad_dq.data_quality_results r
+FROM open_university.oulad_quality.data_quality_failures f
+LEFT ANTI JOIN open_university.oulad_quality.data_quality_results r
     ON f.check_result_id = r.check_result_id
     AND f.run_id = r.run_id;
 
 -- 7. Failure detail agrees with its parent result and enum contract.
 SELECT f.*
-FROM oulad_dq.data_quality_failures f
-INNER JOIN oulad_dq.data_quality_results r
+FROM open_university.oulad_quality.data_quality_failures f
+INNER JOIN open_university.oulad_quality.data_quality_results r
     ON f.check_result_id = r.check_result_id
     AND f.run_id = r.run_id
 WHERE r.status NOT IN ('WARN', 'FAIL')
@@ -92,11 +92,10 @@ SELECT
     r.check_id,
     r.fail_count AS stored_fail_count,
     COUNT(f.failure_id) AS captured_failure_count
-FROM oulad_dq.data_quality_results r
-LEFT JOIN oulad_dq.data_quality_failures f
+FROM open_university.oulad_quality.data_quality_results r
+LEFT JOIN open_university.oulad_quality.data_quality_failures f
     ON r.check_result_id = f.check_result_id
     AND r.run_id = f.run_id
 WHERE r.check_type <> 'VOLUME'
 GROUP BY r.check_result_id, r.run_id, r.check_id, r.fail_count
 HAVING r.fail_count <> COUNT(f.failure_id);
-

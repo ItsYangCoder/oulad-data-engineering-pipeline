@@ -253,7 +253,7 @@ Missing numeric values must not automatically be replaced with zero.
 * Standardize `gender`.
 * Trim and standardize `region`.
 * Standardize `highest_education`.
-* Convert missing `imd_band` placeholders to NULL.
+* Normalize missing demographic text, including `imd_band`, to `Unknown` in Silver. Preserve source values in Bronze and keep missing numeric scores/dates as NULL.
 * Standardize `age_band`.
 * Cast `num_of_prev_attempts` to INTEGER.
 * Cast `studied_credits` to INTEGER.
